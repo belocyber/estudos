@@ -357,13 +357,15 @@ function PainelConcurso({ id, onBack }) {
           </div>
         </div>
 
-        <div style={{ padding: '12px 0' }}>
+        <div className="sidebar-navigation">
           <div className="nav-section-label">Navegação</div>
-          {['visao', 'trilha', 'documentacao', ...(cfg.hasTAF ? ['taf'] : [])].map(t => (
-            <div key={t} className={`nav-item ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
-              {tabLabel[t]}
-            </div>
-          ))}
+          <div className="sidebar-tabs">
+            {['visao', 'trilha', 'documentacao', ...(cfg.hasTAF ? ['taf'] : [])].map(t => (
+              <div key={t} className={`nav-item ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
+                {tabLabel[t]}
+              </div>
+            ))}
+          </div>
         </div>
       </aside>
 
