@@ -41,7 +41,12 @@ body {
 }
 
 /* ── Layout ─────────────────────────────────────── */
-.app-container { display: flex; height: 100vh; overflow: hidden; }
+.app-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  min-height: 100vh;
+}
 
 /* ── Sidebar ─────────────────────────────────────── */
 .sidebar {
@@ -52,6 +57,16 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table {
+  min-width: 680px;
 }
 
 .brand {
@@ -299,12 +314,103 @@ body {
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 
+@media (max-width: 1100px) {
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .content-area { padding: 22px; }
+}
+
 @media (max-width: 900px) {
+  .app-container {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    max-height: 50vh;
+  }
+
+  .main-content {
+    min-height: 100vh;
+  }
+
+  .topbar {
+    padding: 0 18px;
+  }
+
+  .content-area {
+    padding: 18px 16px 24px;
+  }
+
   .grid-4 { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 600px) {
+
+@media (max-width: 640px) {
   .grid-2, .grid-4 { grid-template-columns: 1fr; }
-  .sidebar { width: 100%; position: fixed; z-index: 10; }
+
+  .topbar {
+    height: auto;
+    min-height: 56px;
+    padding: 12px 16px;
+    gap: 8px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .page-title {
+    font-size: 0.73rem;
+  }
+
+  .brand {
+    padding: 14px 16px;
+  }
+
+  .nav-item {
+    padding: 12px 16px;
+  }
+
+  .panel,
+  .hub-card,
+  .metric-card {
+    padding: 16px;
+  }
+
+  .hub-content {
+    padding: 24px 16px 32px;
+  }
+
+  .hub-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .hub-card-identity {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .hub-card-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .hub-card-progress-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .data-table {
+    min-width: 620px;
+  }
 }
 
 /* ── Metric Cards ─────────────────────────────────── */

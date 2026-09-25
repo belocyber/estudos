@@ -452,48 +452,50 @@ function PainelConcurso({ id, onBack }) {
                 <h3 className="panel-title">Acompanhamento por Disciplina</h3>
                 <span className="badge badge-blue">META TOTAL: {totalMeta}h</span>
               </div>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>CÓD.</th>
-                    <th>DISCIPLINA</th>
-                    <th style={{ width: '38%' }}>PROGRESSO</th>
-                    <th style={{ textAlign: 'center' }}>REGISTRAR</th>
-                    <th>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {disciplinas.map((d, i) => {
-                    const pct = d.meta > 0 ? (d.feitas / d.meta) * 100 : 0;
-                    return (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 700, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{d.cod}</td>
-                        <td style={{ color: '#f1f5f9' }}>{d.nome}</td>
-                        <td>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 5 }}>
-                            <span>{d.feitas}h executadas</span>
-                            <span>meta {d.meta}h</span>
-                          </div>
-                          <div className="progress-container">
-                            <div className="progress-bar" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--status-success)' : 'var(--brand-blue)' }} />
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(i, -1)}>−1h</button>
-                          <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(i, 1)}>+1h</button>
-                        </td>
-                        <td>
-                          {pct >= 100
-                            ? <span className="badge badge-green">CONCLUÍDO</span>
-                            : pct > 0
-                            ? <span className="badge badge-amber">ANDAMENTO</span>
-                            : <span className="badge badge-red">PENDENTE</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>CÓD.</th>
+                      <th>DISCIPLINA</th>
+                      <th style={{ width: '38%' }}>PROGRESSO</th>
+                      <th style={{ textAlign: 'center' }}>REGISTRAR</th>
+                      <th>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {disciplinas.map((d, i) => {
+                      const pct = d.meta > 0 ? (d.feitas / d.meta) * 100 : 0;
+                      return (
+                        <tr key={i}>
+                          <td style={{ fontWeight: 700, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{d.cod}</td>
+                          <td style={{ color: '#f1f5f9' }}>{d.nome}</td>
+                          <td>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 5 }}>
+                              <span>{d.feitas}h executadas</span>
+                              <span>meta {d.meta}h</span>
+                            </div>
+                            <div className="progress-container">
+                              <div className="progress-bar" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--status-success)' : 'var(--brand-blue)' }} />
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(i, -1)}>−1h</button>
+                            <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(i, 1)}>+1h</button>
+                          </td>
+                          <td>
+                            {pct >= 100
+                              ? <span className="badge badge-green">CONCLUÍDO</span>
+                              : pct > 0
+                              ? <span className="badge badge-amber">ANDAMENTO</span>
+                              : <span className="badge badge-red">PENDENTE</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -510,42 +512,44 @@ function PainelConcurso({ id, onBack }) {
                   <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#4da3e8', borderBottom: '1px solid var(--border-default)', paddingBottom: 8, marginBottom: 12 }}>
                     {grupo}
                   </div>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: 40 }}></th>
-                        <th>DOCUMENTO</th>
-                        <th style={{ width: 130 }}>ORIGEM</th>
-                        <th style={{ width: 150 }}>QUANDO PROVIDENCIAR</th>
-                        <th style={{ width: 120 }}>STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {docs.filter(d => d.grupo === grupo).map(d => (
-                        <tr key={d.id}>
-                          <td style={{ textAlign: 'center' }}>
-                            {d.actionable
-                              ? <input type="checkbox" className="task-checkbox" checked={d.pronto} onChange={() => toggleDoc(d.id)} />
-                              : <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>—</span>}
-                          </td>
-                          <td style={{ color: d.actionable ? '#f1f5f9' : 'var(--text-secondary)' }}>{d.nome}</td>
-                          <td>
-                            <span className={d.req === 'Legal' ? 'badge badge-green' : 'badge badge-neutral'} style={{ fontSize: '0.65rem' }}>
-                              {d.req}
-                            </span>
-                          </td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{d.momento}</td>
-                          <td>
-                            {d.actionable
-                              ? d.pronto
-                                ? <span className="badge badge-green">PREPARADO</span>
-                                : <span className="badge badge-red">PENDENTE</span>
-                              : <span className="badge badge-neutral">{d.statusFixo}</span>}
-                          </td>
+                  <div className="table-scroll">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 40 }}></th>
+                          <th>DOCUMENTO</th>
+                          <th style={{ width: 130 }}>ORIGEM</th>
+                          <th style={{ width: 150 }}>QUANDO PROVIDENCIAR</th>
+                          <th style={{ width: 120 }}>STATUS</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {docs.filter(d => d.grupo === grupo).map(d => (
+                          <tr key={d.id}>
+                            <td style={{ textAlign: 'center' }}>
+                              {d.actionable
+                                ? <input type="checkbox" className="task-checkbox" checked={d.pronto} onChange={() => toggleDoc(d.id)} />
+                                : <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>—</span>}
+                            </td>
+                            <td style={{ color: d.actionable ? '#f1f5f9' : 'var(--text-secondary)' }}>{d.nome}</td>
+                            <td>
+                              <span className={d.req === 'Legal' ? 'badge badge-green' : 'badge badge-neutral'} style={{ fontSize: '0.65rem' }}>
+                                {d.req}
+                              </span>
+                            </td>
+                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{d.momento}</td>
+                            <td>
+                              {d.actionable
+                                ? d.pronto
+                                  ? <span className="badge badge-green">PREPARADO</span>
+                                  : <span className="badge badge-red">PENDENTE</span>
+                                : <span className="badge badge-neutral">{d.statusFixo}</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ))}
             </div>
