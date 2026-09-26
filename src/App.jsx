@@ -1,47 +1,61 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './index.css';
 
 // ─── DADOS ABIN ──────────────────────────────────────────────────────────────
-const initialDisciplinasABIN = [
-  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 20, feitas: 0 },
-  { cod: 'CB02', nome: 'Atividade de Inteligência e Legislação', meta: 30, feitas: 0 },
-  { cod: 'CE01', nome: 'Direito Administrativo', meta: 25, feitas: 0 },
-  { cod: 'CE02', nome: 'Direito Constitucional', meta: 25, feitas: 0 },
-  { cod: 'CE05', nome: 'Raciocínio Lógico-Matemático', meta: 15, feitas: 0 },
+const etapasEstudoABIN = [
+  { id: 'teoria', label: 'Teoria estudada' },
+  { id: 'resumo', label: 'Resumo e revisão' },
+  { id: 'questoes', label: 'Questões realizadas' },
+  { id: 'erros', label: 'Revisão dos erros' },
+  { id: 'revisao-final', label: 'Revisão final' },
+  { id: 'simulado', label: 'Simulado' },
 ];
 
+const initialDisciplinasABIN = [
+  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 18, feitas: 0 },
+  { cod: 'CB02', nome: 'Atividade de Inteligência e Legislação', meta: 20, feitas: 0 },
+  { cod: 'CE01', nome: 'Direito Administrativo', meta: 12, feitas: 0 },
+  { cod: 'CE02', nome: 'Direito Constitucional', meta: 12, feitas: 0 },
+  { cod: 'CE03', nome: 'Inglês ou Espanhol', meta: 10, feitas: 0 },
+  { cod: 'CE04', nome: 'Raciocínio Lógico', meta: 12, feitas: 0 },
+  { cod: 'CE05', nome: 'Conhecimentos específicos do cargo/área', meta: 31, feitas: 0, nota: 'Conteúdo variável conforme o cargo e a área.' },
+].map(d => ({ ...d, etapas: etapasEstudoABIN.map(e => ({ ...e, concluida: false })) }));
+
 const initialDocumentosABIN = [
-  { id: 'dp1', nome: 'RG', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp2', nome: 'CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp3', nome: 'Título de Eleitor', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp4', nome: 'Certidão de Quitação Eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp5', nome: 'Documento Militar (se masc.)', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'esc1', nome: 'Diploma / Certificado', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
-  { id: 'esc2', nome: 'Histórico Escolar', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
-  { id: 'esc3', nome: 'Habilitação Específica', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Se Aplicável', actionable: false, pronto: false, statusFixo: 'SE APLIC.' },
-  { id: 'is1', nome: 'Certidão Justiça Federal', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is2', nome: 'Certidão Justiça Estadual', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is3', nome: 'Certidão Justiça Militar (Estadual)', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is4', nome: 'Certidão Justiça Militar da União', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is5', nome: 'Certidão Justiça Eleitoral', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is6', nome: 'Certidão Polícia Federal', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is7', nome: 'Certidão Polícia Civil', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is8', nome: 'Cartórios de Protestos', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is9', nome: 'Distribuição Cível', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is10', nome: 'Assentamentos Funcionais', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'SE APLIC.' },
-  { id: 'is11', nome: 'FIP — Ficha de Informações Pessoais', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am1', nome: 'Exames Laboratoriais (Sangue / Urina)', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am2', nome: 'Toxicológico (Larga Janela — 180 dias)', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am3', nome: 'ECG + Ecocardiograma', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am4', nome: 'Radiografia de Tórax + Espirometria', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am5', nome: 'Avaliação Oftalmológica Completa', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am6', nome: 'Audiometria Tonal', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am7', nome: 'Avaliação Psiquiátrica', grupo: 'AVALIAÇÃO MÉDICA', req: 'Último Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'cf1', nome: 'CPF e Identidade', grupo: 'CURSO DE FORMAÇÃO (CFI)', req: 'Último CFI', momento: 'Matrícula', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'cf2', nome: '3 Fotos 3×4 (fundo branco)', grupo: 'CURSO DE FORMAÇÃO (CFI)', req: 'Último CFI', momento: 'Matrícula', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'cf3', nome: 'CNH Categoria B (se aplicável ao cargo)', grupo: 'CURSO DE FORMAÇÃO (CFI)', req: 'Último CFI', momento: 'Conforme Edital', actionable: false, pronto: false, statusFixo: 'SE CARGO' },
-  { id: 'cf4', nome: 'Atestado Médico de Aptidão Física', grupo: 'CURSO DE FORMAÇÃO (CFI)', req: 'Último CFI', momento: 'Matrícula', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'cf5', nome: 'Currículo e Ficha de Cadastro', grupo: 'CURSO DE FORMAÇÃO (CFI)', req: 'Último CFI', momento: 'Matrícula', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
+  { id: 'dp1', nome: 'RG / documento oficial', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp2', nome: 'CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp3', nome: 'Título de eleitor', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp4', nome: 'Certidão de quitação eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizada', actionable: true, pronto: false },
+  { id: 'dp5', nome: 'Documento militar, quando aplicável', grupo: 'DOCUMENTOS PESSOAIS', req: 'Quando aplicável', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp6', nome: 'Foto 3×4', grupo: 'DOCUMENTOS PESSOAIS', req: 'Edital anterior', momento: 'Conferir padrão no edital', actionable: true, pronto: false },
+  { id: 'esc1', nome: 'Diploma ou certificado de escolaridade', grupo: 'ESCOLARIDADE', req: 'Requisito do cargo', momento: 'Antes da posse', actionable: true, pronto: false },
+  { id: 'esc2', nome: 'Histórico escolar', grupo: 'ESCOLARIDADE', req: 'Requisito do cargo', momento: 'Antes da posse', actionable: true, pronto: false },
+  { id: 'is1', nome: 'Certidões da Justiça Federal', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is2', nome: 'Certidões da Justiça Estadual / DF', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is3', nome: 'Certidão da Justiça Militar', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is4', nome: 'Certidão da Justiça Eleitoral', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is5', nome: 'Certidão da Polícia Federal', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is6', nome: 'Certidão da Polícia Civil', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is7', nome: 'Certidões de protesto', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is8', nome: 'Distribuição cível', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Exigida no último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is9', nome: 'Assentamento funcional, se aplicável', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is10', nome: 'FIP — Ficha de Informações Pessoais', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último concurso', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'is11', nome: 'Declarações da investigação social', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Último concurso', momento: 'Conforme convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am1', nome: 'Hemograma', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am2', nome: 'Glicemia', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am3', nome: 'Colesterol', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am4', nome: 'Triglicerídeos', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am5', nome: 'Ureia / creatinina', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am6', nome: 'TGO / TGP', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am7', nome: 'Urina', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am8', nome: 'Toxicológico', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am9', nome: 'ECG', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am10', nome: 'Ecocardiograma', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am11', nome: 'Raio-X', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am12', nome: 'Espirometria', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am13', nome: 'Exames oftalmológicos', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am14', nome: 'Audiometria', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'am15', nome: 'Avaliação psiquiátrica', grupo: 'EXAMES — ALERTA', req: 'Avaliação médica anterior', momento: 'Aguardar convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
 ];
 
 const cargosABIN = [
@@ -51,19 +65,42 @@ const cargosABIN = [
   { id: 'ati', nome: 'Agente Técnico de Inteligência', nivel: 'Médio' },
 ];
 
-// ─── DADOS PRF ADM ────────────────────────────────────────────────────────────
-const initialDisciplinasPRF = [
-  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 25, feitas: 0 },
-  { cod: 'CB02', nome: 'Informática Básica', meta: 15, feitas: 0 },
-  { cod: 'CE01', nome: 'Direito Administrativo', meta: 30, feitas: 0 },
-  { cod: 'CE02', nome: 'Arquivologia', meta: 20, feitas: 0 },
+const etapasEstudoPRF = [
+  { id: 'teoria', label: 'Teoria' },
+  { id: 'resumo', label: 'Resumo' },
+  { id: 'questoes', label: 'Questões' },
+  { id: 'revisao-1', label: 'Revisão 1' },
+  { id: 'revisao-2', label: 'Revisão 2' },
+  { id: 'simulado', label: 'Simulado' },
 ];
 
+const initialDisciplinasPRF = [
+  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 20, feitas: 0 },
+  { cod: 'CB02', nome: 'Raciocínio Lógico', meta: 15, feitas: 0 },
+  { cod: 'CB03', nome: 'Informática', meta: 15, feitas: 0 },
+  { cod: 'CE01', nome: 'Direito Constitucional', meta: 10, feitas: 0 },
+  { cod: 'CE02', nome: 'Direito Administrativo', meta: 15, feitas: 0 },
+  { cod: 'CE03', nome: 'Administração Pública', meta: 15, feitas: 0 },
+  { cod: 'CE04', nome: 'Legislação de Trânsito', meta: 10, feitas: 0 },
+  { cod: 'CE05', nome: 'Legislação específica da PRF', meta: 10, feitas: 0 },
+  { cod: 'CE06', nome: 'Ética no Serviço Público', meta: 5, feitas: 0 },
+  { cod: 'CE07', nome: 'Atualidades / conhecimentos gerais', meta: 5, feitas: 0 },
+].map(d => ({ ...d, etapas: etapasEstudoPRF.map(e => ({ ...e, concluida: false })) }));
+
+// ─── DOCUMENTOS PRF ───────────────────────────────────────────────────────────
 const initialDocumentosPRF = [
-  { id: 'dp1', nome: 'RG e CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp2', nome: 'Título de Eleitor + Quitação Eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp3', nome: 'Documento Militar (se masc.)', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'esc1', nome: 'Certificado de Conclusão do Ensino Médio', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
+  { id: 'dp1', nome: 'RG / documento oficial', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp2', nome: 'CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp3', nome: 'Título de eleitor', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp4', nome: 'Quitação eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizada', actionable: true, pronto: false },
+  { id: 'dp5', nome: 'Documento militar, quando aplicável', grupo: 'DOCUMENTOS PESSOAIS', req: 'Quando aplicável', momento: 'Manter atualizado', actionable: true, pronto: false },
+  { id: 'dp6', nome: 'Comprovante de residência', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Conferir validade no edital', actionable: true, pronto: false },
+  { id: 'esc1', nome: 'Certificado de conclusão do ensino médio', grupo: 'ESCOLARIDADE', req: 'Ensino médio completo', momento: 'Requisito do cargo', actionable: true, pronto: false },
+  { id: 'esc2', nome: 'Histórico escolar', grupo: 'ESCOLARIDADE', req: 'Escolaridade', momento: 'Manter disponível', actionable: true, pronto: false },
+  { id: 'ed1', nome: 'Certidões exigidas no edital', grupo: 'EDITAL E CONVOCAÇÃO', req: 'Conforme edital', momento: 'Não emitir antecipadamente', actionable: false, pronto: false, statusFixo: 'AGUARDAR EDITAL / CONVOCAÇÃO' },
+  { id: 'ed2', nome: 'Documentação para posse', grupo: 'EDITAL E CONVOCAÇÃO', req: 'Conforme convocação', momento: 'Após resultado e convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR CONVOCAÇÃO' },
+  { id: 'ed3', nome: 'Documentação para cotas, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Conferir requisitos no edital', actionable: false, pronto: false, statusFixo: 'AGUARDAR EDITAL' },
+  { id: 'ed4', nome: 'Documentação de deficiência, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Conferir requisitos no edital', actionable: false, pronto: false, statusFixo: 'AGUARDAR EDITAL' },
 ];
 
 const cargosPRF = [
@@ -71,28 +108,42 @@ const cargosPRF = [
 ];
 
 // ─── DADOS ATA-MF ─────────────────────────────────────────────────────────────
-const initialDisciplinasATAMF = [
-  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 30, feitas: 0 },
-  { cod: 'CB02', nome: 'Raciocínio Lógico e Quantitativo', meta: 20, feitas: 0 },
-  { cod: 'CB03', nome: 'Noções de Informática', meta: 15, feitas: 0 },
-  { cod: 'CE01', nome: 'Direito Administrativo', meta: 30, feitas: 0 },
-  { cod: 'CE02', nome: 'Administração Financeira e Orçamentária', meta: 35, feitas: 0 },
-  { cod: 'CE03', nome: 'Contabilidade Geral', meta: 25, feitas: 0 },
-  { cod: 'CE04', nome: 'Legislação Tributária Federal', meta: 25, feitas: 0 },
+const etapasEstudoATAMF = [
+  { id: 'teoria', label: 'Teoria estudada' },
+  { id: 'resumo', label: 'Resumo' },
+  { id: 'questoes', label: 'Questões' },
+  { id: 'revisao-1', label: 'Revisão 1' },
+  { id: 'revisao-2', label: 'Revisão 2' },
+  { id: 'simulado', label: 'Simulado' },
 ];
 
+const initialDisciplinasATAMF = [
+  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 20, feitas: 0 },
+  { cod: 'CB02', nome: 'Raciocínio Lógico', meta: 15, feitas: 0 },
+  { cod: 'CE01', nome: 'Direito Constitucional', meta: 15, feitas: 0 },
+  { cod: 'CE02', nome: 'Direito Administrativo', meta: 15, feitas: 0 },
+  { cod: 'CE03', nome: 'Administração Pública', meta: 15, feitas: 0 },
+  { cod: 'CB03', nome: 'Informática', meta: 15, feitas: 0 },
+  { cod: 'CB04', nome: 'Atualidades', meta: 5, feitas: 0 },
+  { cod: 'CE04', nome: 'Conhecimentos específicos', meta: 20, feitas: 0, nota: 'A confirmar conforme o próximo edital.' },
+].map(d => ({ ...d, etapas: etapasEstudoATAMF.map(e => ({ ...e, concluida: false })) }));
+
 const initialDocumentosATAMF = [
-  { id: 'dp1', nome: 'RG e CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp2', nome: 'Título de Eleitor + Quitação Eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp3', nome: 'Documento Militar (se masc.)', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'esc1', nome: 'Diploma de Nível Superior', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
-  { id: 'esc2', nome: 'Histórico Escolar', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
-  { id: 'is1', nome: 'Certidões de Antecedentes Criminais', grupo: 'INVESTIGAÇÃO / SINDICÂNCIA', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is2', nome: 'Certidão Negativa da Justiça Federal', grupo: 'INVESTIGAÇÃO / SINDICÂNCIA', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
+  { id: 'dp1', nome: 'RG / documento oficial', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'dp2', nome: 'CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'dp3', nome: 'Título de eleitor', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'dp4', nome: 'Quitação eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizada', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'dp5', nome: 'Documento militar, quando aplicável', grupo: 'DOCUMENTOS PESSOAIS', req: 'Quando aplicável', momento: 'Manter atualizado', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'dp6', nome: 'Comprovante de residência', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Conferir validade no edital', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'esc1', nome: 'Certificado de ensino médio', grupo: 'ESCOLARIDADE', req: 'Nível médio', momento: 'Requisito do cargo', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'esc2', nome: 'Histórico escolar', grupo: 'ESCOLARIDADE', req: 'Escolaridade', momento: 'Manter disponível', actionable: true, pronto: false, statusATA: 'PREPARAR' },
+  { id: 'ed1', nome: 'Certidões exigidas para posse', grupo: 'EDITAL E POSSE', req: 'Conforme edital', momento: 'Não emitir antes do edital', actionable: false, pronto: false, statusATA: 'AGUARDAR EDITAL' },
+  { id: 'ed2', nome: 'Documentação de cotas, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Conferir regras no edital', actionable: false, pronto: false, statusATA: 'AGUARDAR EDITAL' },
+  { id: 'ed3', nome: 'Documentação de deficiência, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Conferir regras no edital', actionable: false, pronto: false, statusATA: 'AGUARDAR EDITAL' },
 ];
 
 const cargosATAMF = [
-  { id: 'ata', nome: 'Analista Técnico Administrativo', nivel: 'Superior' },
+  { id: 'ata', nome: 'Assistente Técnico-Administrativo (ATA)', nivel: 'Médio' },
 ];
 
 // ─── DADOS CIVIL RJ ───────────────────────────────────────────────────────────
@@ -129,7 +180,6 @@ const cargosCIVIL = [
   { id: 'ins', nome: 'Inspetor de Polícia', nivel: 'Médio' },
 ];
 
-// ─── DADOS ESFCEX ────────────────────────────────────────────────────────────
 const initialDisciplinasESFCEX = [
   { cod: 'CG01', nome: 'Língua Portuguesa', meta: 20, feitas: 0 },
   { cod: 'CG02', nome: 'História do Brasil', meta: 15, feitas: 0 },
@@ -176,6 +226,7 @@ const concursosConfig = {
     status: 'AGUARDANDO AUTORIZAÇÃO',
     badgeVariant: 'badge-amber',
     focoAtual: 'Agente Técnico de Inteligência (Médio)',
+    cargoPadrao: 'ati',
     disciplinas: initialDisciplinasABIN,
     documentos: initialDocumentosABIN,
     cargos: cargosABIN,
@@ -196,10 +247,11 @@ const concursosConfig = {
   atamf: {
     logo: '/ATAMF.png',
     titulo: 'ATA-MF',
-    nome: 'Analista Técnico Adm. — Ministério da Fazenda',
+    nome: 'Assistente Técnico-Administrativo — Ministério da Fazenda',
     status: 'AGUARDANDO EDITAL',
     badgeVariant: 'badge-amber',
-    focoAtual: 'Analista Técnico Administrativo (Superior)',
+    focoAtual: 'Assistente Técnico-Administrativo (ATA) — nível médio',
+    cargoPadrao: 'ata',
     disciplinas: initialDisciplinasATAMF,
     documentos: initialDocumentosATAMF,
     cargos: cargosATAMF,
@@ -265,8 +317,10 @@ function HubInicial({ onSelect }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
           {Object.entries(concursosConfig).map(([id, c]) => {
-            const metaTotal = c.disciplinas.reduce((a, d) => a + d.meta, 0);
-            const feitasTotal = c.disciplinas.reduce((a, d) => a + d.feitas, 0);
+            const storageScope = `painel-concursos:${id}${['prf', 'atamf'].includes(id) ? ':v2' : ''}`;
+            const disciplinas = readSavedState(`${storageScope}:disciplinas`, c.disciplinas);
+            const metaTotal = disciplinas.reduce((a, d) => a + d.meta, 0);
+            const feitasTotal = disciplinas.reduce((a, d) => a + d.feitas, 0);
             const pct = metaTotal > 0 ? Math.round((feitasTotal / metaTotal) * 100) : 0;
             return (
               <div key={id} className="hub-card" onClick={() => onSelect(id)}>
@@ -319,14 +373,39 @@ function HubInicial({ onSelect }) {
 }
 
 // ─── PAINEL DO CONCURSO ───────────────────────────────────────────────────────
+function readSavedState(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function PainelConcurso({ id, onBack }) {
   const cfg = concursosConfig[id];
+  const storageScope = `painel-concursos:${id}${['prf', 'atamf'].includes(id) ? ':v2' : ''}`;
+  const hasStudyChecklist = ['abin', 'prf', 'atamf'].includes(id);
   const [activeTab, setActiveTab] = useState('visao');
-  const [cargoSel, setCargoSel] = useState(cfg.cargos[0]);
-  const [disciplinas, setDisciplinas] = useState(() => cfg.disciplinas.map(d => ({ ...d })));
-  const [docs, setDocs] = useState(() => cfg.documentos.map(d => ({ ...d })));
+  const contentRef = useRef(null);
+  const [cargoSel, setCargoSel] = useState(() => cfg.cargos.find(c => c.id === cfg.cargoPadrao) || cfg.cargos[0]);
+  const [disciplinas, setDisciplinas] = useState(() => readSavedState(`${storageScope}:disciplinas`, cfg.disciplinas.map(d => ({ ...d }))));
+  const [docs, setDocs] = useState(() => readSavedState(`${storageScope}:documentos`, cfg.documentos.map(d => ({ ...d }))));
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`${storageScope}:disciplinas`, JSON.stringify(disciplinas));
+      localStorage.setItem(`${storageScope}:documentos`, JSON.stringify(docs));
+    } catch {
+      return;
+    }
+  }, [storageScope, disciplinas, docs]);
 
   const toggleDoc = docId => setDocs(ds => ds.map(d => d.id === docId && d.actionable ? { ...d, pronto: !d.pronto } : d));
+
+  const updateDocStatus = (docId, statusATA) => setDocs(ds => ds.map(d => (
+    d.id === docId ? { ...d, statusATA, pronto: statusATA === 'ENTREGUE' } : d
+  )));
 
   const updateHoras = (i, amt) => setDisciplinas(ds => {
     const next = [...ds];
@@ -334,17 +413,38 @@ function PainelConcurso({ id, onBack }) {
     return next;
   });
 
+  const updateMeta = (cod, value) => setDisciplinas(ds => ds.map(d => {
+    if (d.cod !== cod) return d;
+    const meta = Math.max(0, Number(value) || 0);
+    return { ...d, meta, feitas: Math.min(d.feitas, meta) };
+  }));
+
+  const toggleEtapa = (cod, etapaId) => setDisciplinas(ds => ds.map(d => (
+    d.cod === cod
+      ? { ...d, etapas: d.etapas.map(e => e.id === etapaId ? { ...e, concluida: !e.concluida } : e) }
+      : d
+  )));
+
   const totalMeta = disciplinas.reduce((a, d) => a + d.meta, 0);
   const totalFeitas = disciplinas.reduce((a, d) => a + d.feitas, 0);
-  const pctEstudos = totalMeta > 0 ? Math.round((totalFeitas / totalMeta) * 100) : 0;
+  const pctHoras = totalMeta > 0 ? Math.round((totalFeitas / totalMeta) * 100) : 0;
+  const etapasTotal = disciplinas.reduce((total, d) => total + (d.etapas?.length || 0), 0);
+  const etapasConcluidas = disciplinas.reduce((total, d) => total + (d.etapas?.filter(e => e.concluida).length || 0), 0);
+  const materiasConcluidas = disciplinas.filter(d => d.etapas?.length && d.etapas.every(e => e.concluida)).length;
+  const pctEtapas = etapasTotal > 0 ? Math.round((etapasConcluidas / etapasTotal) * 100) : 0;
 
   const actionableDocs = docs.filter(d => d.actionable);
-  const docsOk = actionableDocs.filter(d => d.pronto).length;
+  const docsOk = actionableDocs.filter(d => id === 'atamf' ? d.statusATA === 'ENTREGUE' : d.pronto).length;
   const docsTotal = actionableDocs.length;
 
   const gruposDocs = [...new Set(docs.map(d => d.grupo))];
 
   const tabLabel = { visao: 'VISÃO GERAL', trilha: 'TRILHA DE ESTUDOS', documentacao: 'DOCUMENTAÇÃO', taf: 'CONTROLE FÍSICO' };
+  const selectTab = tab => {
+    setActiveTab(tab);
+    contentRef.current?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  };
 
   return (
     <>
@@ -361,7 +461,7 @@ function PainelConcurso({ id, onBack }) {
           <div className="nav-section-label">Navegação</div>
           <div className="sidebar-tabs">
             {['visao', 'trilha', 'documentacao', ...(cfg.hasTAF ? ['taf'] : [])].map(t => (
-              <div key={t} className={`nav-item ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
+              <div key={t} className={`nav-item ${activeTab === t ? 'active' : ''}`} onClick={() => selectTab(t)}>
                 {tabLabel[t]}
               </div>
             ))}
@@ -375,7 +475,7 @@ function PainelConcurso({ id, onBack }) {
           <span className={`badge ${cfg.badgeVariant}`}>{cfg.status}</span>
         </header>
 
-        <div className="content-area">
+        <div className="content-area" ref={contentRef}>
 
           {/* ── VISÃO GERAL ── */}
           {activeTab === 'visao' && (
@@ -383,15 +483,15 @@ function PainelConcurso({ id, onBack }) {
               <div className="grid-4" style={{ marginBottom: 16 }}>
                 <div className="metric-card">
                   <span className="metric-label">Carga Horária</span>
-                  <span className="metric-value" style={{ color: pctEstudos === 100 ? 'var(--status-success)' : 'var(--brand-blue)' }}>
+                  <span className="metric-value" style={{ color: pctHoras === 100 ? 'var(--status-success)' : 'var(--brand-blue)' }}>
                     {totalFeitas}h / {totalMeta}h
                   </span>
                   <div className="progress-container">
-                    <div className="progress-bar" style={{ width: `${pctEstudos}%`, background: 'var(--brand-blue)' }} />
+                    <div className="progress-bar" style={{ width: `${pctHoras}%`, background: 'var(--brand-blue)' }} />
                   </div>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">Docs Imediatos</span>
+                  <span className="metric-label">{id === 'atamf' ? 'Docs entregues' : hasStudyChecklist ? 'Docs preparados' : 'Docs Imediatos'}</span>
                   <span className="metric-value" style={{ color: docsOk === docsTotal ? 'var(--status-success)' : 'var(--status-warning)' }}>
                     {docsOk} / {docsTotal}
                   </span>
@@ -400,8 +500,16 @@ function PainelConcurso({ id, onBack }) {
                   </div>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">Simulados</span>
-                  <span className="metric-value" style={{ color: 'var(--text-secondary)' }}>0 realizados</span>
+                  <span className="metric-label">{hasStudyChecklist ? 'Etapas do plano' : 'Simulados'}</span>
+                  <span className="metric-value" style={{ color: 'var(--text-secondary)' }}>
+                    {hasStudyChecklist ? `${etapasConcluidas} / ${etapasTotal}` : '0 realizados'}
+                  </span>
+                  {hasStudyChecklist && <>
+                    <div className="progress-container">
+                      <div className="progress-bar" style={{ width: `${pctEtapas}%`, background: 'var(--brand-blue)' }} />
+                    </div>
+                    <span className="metric-detail">{materiasConcluidas} de {disciplinas.length} matérias concluídas</span>
+                  </>}
                 </div>
                 <div className="metric-card">
                   <span className="metric-label">Próximo Marco</span>
@@ -448,7 +556,91 @@ function PainelConcurso({ id, onBack }) {
           )}
 
           {/* ── TRILHA DE ESTUDOS ── */}
-          {activeTab === 'trilha' && (
+          {activeTab === 'trilha' && hasStudyChecklist && (
+            <section className="study-plan">
+              <div className="study-plan-header">
+                <div>
+                  <h3 className="panel-title">{id === 'atamf' ? 'Plano de estudos — ATA-MF' : id === 'prf' ? 'Plano de estudos — PRF Administrativo' : 'Plano de estudos por matéria'}</h3>
+                  <p className="study-plan-summary">{materiasConcluidas} de {disciplinas.length} matérias concluídas · {etapasConcluidas} de {etapasTotal} etapas</p>
+                </div>
+                <span className="badge badge-blue">META PLANEJADA: {totalMeta}H</span>
+              </div>
+              <div className="study-notice">
+                {id === 'prf'
+                  ? <><strong>Base de preparação:</strong> matérias e metas são editáveis e servem como planejamento inicial de 120h; não representam o conteúdo oficial de um novo edital. A PRF informa ensino médio completo para o cargo de Agente Administrativo. Confirme os requisitos e o programa no edital vigente.</>
+                  : id === 'atamf'
+                    ? <><strong>Referência histórica:</strong> o último concurso para ATA-MF foi realizado em 2009. A lista é uma base de organização, não o conteúdo oficial de um próximo edital. Consulte o edital histórico no repositório da ENAP e confirme futuras regras em publicação oficial.</>
+                    : <><strong>Referência de planejamento:</strong> conteúdo-base do edital de 2018. As 115h são uma meta inicial do sistema, não uma carga horária oficial da ABIN. Conhecimentos específicos variam conforme cargo e área.</>}
+              </div>
+              <div className="study-subject-list">
+                {disciplinas.map((d, i) => {
+                  const concluidas = d.etapas.filter(e => e.concluida).length;
+                  const materiaConcluida = concluidas === d.etapas.length;
+                  const pct = d.etapas.length ? Math.round((concluidas / d.etapas.length) * 100) : 0;
+                  return (
+                    <article className="study-subject" key={d.cod}>
+                      <div className="study-subject-header">
+                        <div className="study-subject-title">
+                          <span className="study-subject-code">{d.cod}</span>
+                          <div>
+                            <h4>{d.nome}</h4>
+                            {d.nota && <p>{d.nota}</p>}
+                          </div>
+                        </div>
+                        <span className={`badge ${materiaConcluida ? 'badge-green' : concluidas ? 'badge-amber' : 'badge-neutral'}`}>
+                          {materiaConcluida ? 'CONCLUÍDA' : concluidas ? 'EM ANDAMENTO' : 'PENDENTE'}
+                        </span>
+                      </div>
+                      <div className="study-subject-progress">
+                        <span>{concluidas} de {d.etapas.length} etapas</span>
+                        {id === 'prf' || id === 'atamf'
+                          ? <div className="study-meta-entry">
+                              <label htmlFor={`meta-${d.cod}`}>Meta</label>
+                              <input
+                                id={`meta-${d.cod}`}
+                                className="study-meta-input"
+                                aria-label={`Meta de ${d.nome} em horas`}
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={d.meta}
+                                onChange={e => updateMeta(d.cod, e.target.value)}
+                              />
+                              <span>h · registradas {d.feitas}h</span>
+                            </div>
+                          : <span>meta {d.meta}h · registradas {d.feitas}h</span>}
+                      </div>
+                      <div className="progress-container">
+                        <div className="progress-bar" style={{ width: `${pct}%`, background: materiaConcluida ? 'var(--status-success)' : 'var(--brand-blue)' }} />
+                      </div>
+                      <div className="study-checklist">
+                        {d.etapas.map(etapa => (
+                          <label className="study-task" key={etapa.id}>
+                            <input
+                              type="checkbox"
+                              className="task-checkbox"
+                              checked={etapa.concluida}
+                              onChange={() => toggleEtapa(d.cod, etapa.id)}
+                            />
+                            <span>{etapa.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="study-hours">
+                        <span>Horas estudadas</span>
+                        <div>
+                          <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(i, -1)} disabled={d.feitas === 0}>−1h</button>
+                          <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(i, 1)} disabled={d.feitas === d.meta}>+1h</button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'trilha' && !hasStudyChecklist && (
             <div className="panel">
               <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="panel-title">Acompanhamento por Disciplina</h3>
@@ -505,9 +697,38 @@ function PainelConcurso({ id, onBack }) {
           {activeTab === 'documentacao' && (
             <div className="panel">
               <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 className="panel-title">Matriz Documental — {cfg.titulo}</h3>
-                <span className="badge badge-blue">IMEDIATOS: {docsOk}/{docsTotal}</span>
+                <h3 className="panel-title">
+                  {id === 'abin' ? 'Documentos e alertas — ABIN' : id === 'prf' ? 'Documentos — PRF Administrativo' : id === 'atamf' ? 'Documentação — ATA-MF' : `Matriz Documental — ${cfg.titulo}`}
+                </h3>
+                <span className="badge badge-blue">{id === 'atamf' ? 'ENTREGUES' : hasStudyChecklist ? 'PREPARADOS' : 'IMEDIATOS'}: {docsOk}/{docsTotal}</span>
               </div>
+
+              {hasStudyChecklist && (
+                <div className="notice-stack">
+                  {id === 'abin' ? <>
+                    <div className="study-notice">
+                      <strong>Investigação social:</strong> as certidões desta lista foram exigidas no último concurso. Não solicite certidões com validade limitada antes da convocação; confirme a relação e o prazo no próximo edital.
+                    </div>
+                    <div className="study-notice study-notice-warning">
+                      <strong>Avaliação médica:</strong> exames listados como alerta com base na seleção anterior. Status padrão: aguardar convocação e confirmar exames, prazos e locais na publicação vigente.
+                    </div>
+                  </> : id === 'prf' ? <>
+                    <div className="study-notice">
+                      <strong>Certidões:</strong> não emita nem solicite certidões antecipadamente. A lista e a validade dependem do edital e da convocação.
+                    </div>
+                    <div className="study-notice study-notice-warning">
+                      <strong>Posse e documentação condicional:</strong> providencie somente quando houver orientação oficial; cotas e documentação de deficiência dependem da situação do candidato e das regras do edital.
+                    </div>
+                  </> : <>
+                    <div className="study-notice">
+                      <strong>Referência histórica:</strong> o último concurso para ATA-MF ocorreu em 2009. Prepare documentos pessoais e escolares, mas confirme requisitos e validade no próximo edital.
+                    </div>
+                    <div className="study-notice study-notice-warning">
+                      <strong>Certidões e documentos condicionais:</strong> aguarde o edital ou a convocação antes de solicitar certidões e providenciar documentação de posse, cotas ou deficiência.
+                    </div>
+                  </>}
+                </div>
+              )}
 
               {gruposDocs.map(grupo => (
                 <div key={grupo} style={{ marginBottom: 28 }}>
@@ -529,7 +750,9 @@ function PainelConcurso({ id, onBack }) {
                         {docs.filter(d => d.grupo === grupo).map(d => (
                           <tr key={d.id}>
                             <td style={{ textAlign: 'center' }}>
-                              {d.actionable
+                              {id === 'atamf'
+                                ? <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>—</span>
+                                : d.actionable
                                 ? <input type="checkbox" className="task-checkbox" checked={d.pronto} onChange={() => toggleDoc(d.id)} />
                                 : <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>—</span>}
                             </td>
@@ -541,7 +764,18 @@ function PainelConcurso({ id, onBack }) {
                             </td>
                             <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{d.momento}</td>
                             <td>
-                              {d.actionable
+                              {id === 'atamf'
+                                ? <select
+                                    className="select-control doc-status-control"
+                                    aria-label={`Status de ${d.nome}`}
+                                    value={d.statusATA}
+                                    onChange={e => updateDocStatus(d.id, e.target.value)}
+                                  >
+                                    <option value="PREPARAR">PREPARAR</option>
+                                    <option value="AGUARDAR EDITAL">AGUARDAR EDITAL</option>
+                                    <option value="ENTREGUE">ENTREGUE</option>
+                                  </select>
+                                : d.actionable
                                 ? d.pronto
                                   ? <span className="badge badge-green">PREPARADO</span>
                                   : <span className="badge badge-red">PENDENTE</span>
