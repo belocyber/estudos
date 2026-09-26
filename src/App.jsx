@@ -147,32 +147,57 @@ const cargosATAMF = [
 ];
 
 // ─── DADOS CIVIL RJ ───────────────────────────────────────────────────────────
-const initialDisciplinasCIVIL = [
-  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 25, feitas: 0 },
-  { cod: 'CB02', nome: 'Raciocínio Lógico', meta: 20, feitas: 0 },
-  { cod: 'CB03', nome: 'Noções de Informática', meta: 10, feitas: 0 },
-  { cod: 'CE01', nome: 'Direito Penal', meta: 30, feitas: 0 },
-  { cod: 'CE02', nome: 'Direito Processual Penal', meta: 25, feitas: 0 },
-  { cod: 'CE03', nome: 'Direito Constitucional', meta: 20, feitas: 0 },
-  { cod: 'CE04', nome: 'Direito Administrativo', meta: 20, feitas: 0 },
-  { cod: 'CE05', nome: 'Criminologia e Medicina Legal', meta: 20, feitas: 0 },
+const etapasEstudoCIVIL = [
+  { id: 'teoria', label: 'Teoria' },
+  { id: 'resumo', label: 'Resumo' },
+  { id: 'questoes', label: 'Questões' },
+  { id: 'revisao-1', label: 'Revisão 1' },
+  { id: 'revisao-2', label: 'Revisão 2' },
+  { id: 'simulado', label: 'Simulado' },
 ];
 
+const initialDisciplinasCIVIL = [
+  { cod: 'CB01', nome: 'Língua Portuguesa', meta: 20, feitas: 0 },
+  { cod: 'CE01', nome: 'Direito Constitucional', meta: 15, feitas: 0 },
+  { cod: 'CE02', nome: 'Direito Administrativo', meta: 15, feitas: 0 },
+  { cod: 'CE03', nome: 'Direito Penal', meta: 25, feitas: 0 },
+  { cod: 'CE04', nome: 'Processo Penal', meta: 20, feitas: 0 },
+  { cod: 'CE05', nome: 'Legislação Penal Especial', meta: 15, feitas: 0 },
+  { cod: 'CE06', nome: 'Direitos Humanos', meta: 10, feitas: 0 },
+  { cod: 'CB02', nome: 'Informática', meta: 10, feitas: 0 },
+  { cod: 'CB03', nome: 'Raciocínio Lógico', meta: 10, feitas: 0 },
+  { cod: 'CE07', nome: 'Legislação específica da Polícia Civil', meta: 15, feitas: 0 },
+].map(d => ({ ...d, etapas: etapasEstudoCIVIL.map(e => ({ ...e, concluida: false })) }));
+
 const initialDocumentosCIVIL = [
-  { id: 'dp1', nome: 'RG e CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp2', nome: 'Título de Eleitor + Quitação Eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp3', nome: 'Documento Militar (se masc.)', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'esc1', nome: 'Diploma de Nível Superior (Direito)', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
-  { id: 'esc2', nome: 'Histórico Escolar', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Posse', actionable: true, pronto: false },
-  { id: 'esc3', nome: 'OAB ou habilitação (se exigida)', grupo: 'ESCOLARIDADE', req: 'A Confirmar', momento: 'Conforme Edital', actionable: false, pronto: false, statusFixo: 'A CONFIRMAR' },
-  { id: 'is1', nome: 'Antecedentes Criminais (Federal)', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is2', nome: 'Antecedentes Criminais (Estadual)', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is3', nome: 'Antecedentes Criminais (Polícia Civil)', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am1', nome: 'Avaliação Médica (Aptidão Física e Mental)', grupo: 'AVALIAÇÃO MÉDICA', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am2', nome: 'Exame Toxicológico', grupo: 'AVALIAÇÃO MÉDICA', req: 'A Confirmar', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
+  { id: 'dp1', nome: 'RG / documento oficial', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'dp2', nome: 'CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'dp3', nome: 'Título de eleitor', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'dp4', nome: 'Quitação eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizada', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'dp5', nome: 'Documento militar, quando aplicável', grupo: 'DOCUMENTOS PESSOAIS', req: 'Quando aplicável', momento: 'Manter atualizado', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'dp6', nome: 'Comprovante de residência', grupo: 'DOCUMENTOS PESSOAIS', req: 'Conforme edital', momento: 'Conferir validade', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'esc1', nome: 'Diploma / certificado de escolaridade', grupo: 'ESCOLARIDADE E HABILITAÇÃO', req: 'Conforme cargo', momento: 'Requisito do cargo', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'esc2', nome: 'Histórico escolar', grupo: 'ESCOLARIDADE E HABILITAÇÃO', req: 'Conforme cargo', momento: 'Manter disponível', actionable: true, pronto: false, statusCivil: 'PREPARAR' },
+  { id: 'esc3', nome: 'CNH, quando exigida pelo cargo', grupo: 'ESCOLARIDADE E HABILITAÇÃO', req: 'Conforme cargo', momento: 'Confirmar categoria no edital', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is1', nome: 'Certidões criminais', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is2', nome: 'Certidões da Justiça Federal', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is3', nome: 'Certidões da Justiça Estadual', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is4', nome: 'Certidão da Justiça Eleitoral', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is5', nome: 'Certidão da Justiça Militar, quando aplicável', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is6', nome: 'Certidão da Polícia Federal', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is7', nome: 'Certidão da Polícia Civil', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Não emitir antes da convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is8', nome: 'Certidões de protesto, se exigidas', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Aguardar instruções', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'is9', nome: 'Documentação da investigação social', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'am1', nome: 'Documentação médica', grupo: 'ETAPAS E POSSE', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'am2', nome: 'Documentação para TAF', grupo: 'ETAPAS E POSSE', req: 'Se previsto', momento: 'Aguardar convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'ap1', nome: 'Documentação para avaliação psicológica', grupo: 'ETAPAS E POSSE', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'ps1', nome: 'Documentação para posse', grupo: 'ETAPAS E POSSE', req: 'Conforme convocação', momento: 'Após resultado e convocação', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'pc1', nome: 'Documentação de cotas, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Confirmar regras no edital', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
+  { id: 'pc2', nome: 'Documentação PcD, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Confirmar regras no edital', actionable: true, pronto: false, statusCivil: 'AGUARDAR EDITAL' },
 ];
 
 const cargosCIVIL = [
+  { id: 'a-definir', nome: 'A definir conforme o cargo', nivel: 'Conferir requisito no edital estadual' },
   { id: 'del', nome: 'Delegado de Polícia', nivel: 'Superior (Direito)' },
   { id: 'inv', nome: 'Investigador de Polícia', nivel: 'Médio' },
   { id: 'esc', nome: 'Escrivão de Polícia', nivel: 'Médio/Superior' },
@@ -180,41 +205,77 @@ const cargosCIVIL = [
   { id: 'ins', nome: 'Inspetor de Polícia', nivel: 'Médio' },
 ];
 
-const initialDisciplinasESFCEX = [
-  { cod: 'CG01', nome: 'Língua Portuguesa', meta: 20, feitas: 0 },
-  { cod: 'CG02', nome: 'História do Brasil', meta: 15, feitas: 0 },
-  { cod: 'CG03', nome: 'Geografia do Brasil', meta: 15, feitas: 0 },
-  { cod: 'CE01', nome: 'Direito Administrativo', meta: 25, feitas: 0 },
-  { cod: 'CE02', nome: 'Direito Constitucional', meta: 25, feitas: 0 },
-  { cod: 'CE03', nome: 'Direito Civil', meta: 20, feitas: 0 },
-  { cod: 'CE04', nome: 'Direito Processual Civil', meta: 20, feitas: 0 },
+const etapasConcursoCIVIL = [
+  { id: 'prova-objetiva', label: 'Prova objetiva' },
+  { id: 'prova-discursiva', label: 'Prova discursiva, se prevista' },
+  { id: 'taf', label: 'TAF, se previsto' },
+  { id: 'exame-medico', label: 'Exame médico' },
+  { id: 'avaliacao-psicologica', label: 'Avaliação psicológica' },
+  { id: 'investigacao-social', label: 'Investigação social' },
+  { id: 'curso-formacao', label: 'Curso de formação' },
+  { id: 'titulos', label: 'Avaliação de títulos, se prevista' },
+  { id: 'posse', label: 'Posse' },
+].map(etapa => ({ ...etapa, concluida: false }));
+
+const etapasEstudoESFCEX = [
+  { id: 'teoria', label: 'Teoria' },
+  { id: 'resumo', label: 'Resumo' },
+  { id: 'questoes', label: 'Questões' },
+  { id: 'revisao-1', label: 'Revisão 1' },
+  { id: 'revisao-2', label: 'Revisão 2' },
+  { id: 'simulado', label: 'Simulado' },
 ];
+
+const initialDisciplinasESFCEX = [
+  { cod: 'CG01', nome: 'Língua Portuguesa', meta: 0, feitas: 0 },
+  { cod: 'CG02', nome: 'História do Brasil', meta: 0, feitas: 0 },
+  { cod: 'CG03', nome: 'Geografia do Brasil', meta: 0, feitas: 0 },
+  { cod: 'CG04', nome: 'Língua Inglesa', meta: 0, feitas: 0 },
+  { cod: 'ESP-DIR', cargoId: 'qc_dir', nome: 'Conhecimentos específicos — Direito', meta: 0, feitas: 0 },
+  { cod: 'ESP-ADM', cargoId: 'qc_adm', nome: 'Conhecimentos específicos — Administração', meta: 0, feitas: 0 },
+  { cod: 'ESP-INF', cargoId: 'qc_inf', nome: 'Conhecimentos específicos — Informática', meta: 0, feitas: 0 },
+  { cod: 'ESP-PSI', cargoId: 'qc_psi', nome: 'Conhecimentos específicos — Psicologia', meta: 0, feitas: 0 },
+  { cod: 'ESP-MAG', cargoId: 'qc_mag', nome: 'Conhecimentos específicos — Magistério', meta: 0, feitas: 0 },
+  { cod: 'ESP-CAP', cargoId: 'qc_capelao', nome: 'Conhecimentos específicos — Capelania', meta: 0, feitas: 0 },
+].map(d => ({ ...d, etapas: etapasEstudoESFCEX.map(e => ({ ...e, concluida: false })) }));
 
 const initialDocumentosESFCEX = [
-  { id: 'dp1', nome: 'RG e CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp2', nome: 'Título de Eleitor + Quitação Eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp3', nome: 'Certidão de Nascimento ou Casamento', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'dp4', nome: 'Documento Militar (Reservista)', grupo: 'DOCUMENTOS PESSOAIS', req: 'Legal', momento: 'Permanente', actionable: true, pronto: false },
-  { id: 'esc1', nome: 'Diploma de Nível Superior', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Matrícula', actionable: true, pronto: false },
-  { id: 'esc2', nome: 'Histórico Escolar', grupo: 'ESCOLARIDADE', req: 'Legal', momento: 'Antes da Matrícula', actionable: true, pronto: false },
-  { id: 'esc3', nome: 'Registro Profissional (OAB, CRM etc.)', grupo: 'ESCOLARIDADE', req: 'Edital', momento: 'Conforme área', actionable: false, pronto: false, statusFixo: 'SE EXIGIDO' },
-  { id: 'is1', nome: 'Certidão de Antecedentes Criminais (Federal)', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is2', nome: 'Certidão de Antecedentes Criminais (Estadual)', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is3', nome: 'Certidão da Justiça Militar da União', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'is4', nome: 'Certidão Negativa do SERASA / SPC', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Edital', momento: 'Convocação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am1', nome: 'Inspeção de Saúde (Padrão Exército)', grupo: 'INSPEÇÃO DE SAÚDE', req: 'Edital', momento: 'Após Classificação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am2', nome: 'Exames Laboratoriais Completos', grupo: 'INSPEÇÃO DE SAÚDE', req: 'Edital', momento: 'Após Classificação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'am3', nome: 'Avaliação Psicológica', grupo: 'INSPEÇÃO DE SAÚDE', req: 'Edital', momento: 'Após Classificação', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'cf1', nome: '3 Fotos 3×4 (fundo branco)', grupo: 'CURSO DE FORMAÇÃO (CFO)', req: 'Edital', momento: 'Matrícula', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
-  { id: 'cf2', nome: 'Atestado Médico de Aptidão Física', grupo: 'CURSO DE FORMAÇÃO (CFO)', req: 'Edital', momento: 'Matrícula', actionable: false, pronto: false, statusFixo: 'AGUARDAR' },
+  { id: 'dp1', nome: 'Documento de identidade', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'dp2', nome: 'CPF', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'dp3', nome: 'Certidão de nascimento ou casamento', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter disponível', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'dp4', nome: 'Título de eleitor', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizado', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'dp5', nome: 'Quitação eleitoral', grupo: 'DOCUMENTOS PESSOAIS', req: 'Base pessoal', momento: 'Manter atualizada', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'dp6', nome: 'Documento de situação militar, quando aplicável', grupo: 'DOCUMENTOS PESSOAIS', req: 'Quando aplicável', momento: 'Manter atualizado', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'esc1', nome: 'Diploma de nível superior', grupo: 'FORMAÇÃO E REGISTRO', req: 'Formação específica', momento: 'Requisito da área', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'esc2', nome: 'Histórico escolar', grupo: 'FORMAÇÃO E REGISTRO', req: 'Formação específica', momento: 'Manter disponível', actionable: true, pronto: false, statusEsfcex: 'PREPARAR' },
+  { id: 'esc3', nome: 'Registro no conselho profissional, quando exigido', grupo: 'FORMAÇÃO E REGISTRO', req: 'Conforme área', momento: 'Confirmar exigência no edital', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'is1', nome: 'Certidões exigidas na Investigação Social', grupo: 'INVESTIGAÇÃO SOCIAL', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'am1', nome: 'Documentação médica', grupo: 'INSPEÇÃO DE SAÚDE', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'am2', nome: 'Exames complementares', grupo: 'INSPEÇÃO DE SAÚDE', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'ap1', nome: 'Documentação para avaliação psicológica', grupo: 'ETAPAS E MATRÍCULA', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'cf1', nome: 'Documentação para matrícula', grupo: 'ETAPAS E MATRÍCULA', req: 'Conforme edital', momento: 'Aguardar convocação', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'pc1', nome: 'Documentação de cotas, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Confirmar regras no edital', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
+  { id: 'pc2', nome: 'Documentação PcD, se aplicável', grupo: 'DOCUMENTAÇÃO CONDICIONAL', req: 'Se aplicável', momento: 'Confirmar regras no edital', actionable: true, pronto: false, statusEsfcex: 'AGUARDAR EDITAL' },
 ];
 
+const etapasConcursoESFCEX = [
+  { id: 'ei', label: 'Exame Intelectual (EI)' },
+  { id: 'inspecao-saude', label: 'Inspeção de Saúde' },
+  { id: 'eaf', label: 'Exame de Aptidão Física (EAF)' },
+  { id: 'avaliacao-psicologica', label: 'Avaliação Psicológica' },
+  { id: 'investigacao-social', label: 'Investigação Social' },
+  { id: 'heteroidentificacao', label: 'Heteroidentificação / verificação documental, se aplicável' },
+  { id: 'matricula', label: 'Matrícula em 2027' },
+  { id: 'curso-formacao', label: 'Curso de Formação' },
+].map(etapa => ({ ...etapa, concluida: false }));
+
 const cargosESFCEX = [
-  { id: 'qc_dir', nome: 'CFO/QC — Direito', nivel: 'Superior (Direito / OAB)' },
-  { id: 'qc_adm', nome: 'CFO/QC — Administração', nivel: 'Superior (Administração)' },
-  { id: 'qc_inf', nome: 'CFO/QC — Informática', nivel: 'Superior (TI)' },
-  { id: 'qc_psi', nome: 'CFO/QC — Psicologia', nivel: 'Superior (Psicologia)' },
-  { id: 'qc_mag', nome: 'CFO/QC — Magistério', nivel: 'Superior (Licenciatura)' },
+  { id: 'qc_dir', nome: 'CFO/QC — Direito', nivel: 'Superior (Direito / OAB)', limiteEtario: 'Até 32 anos — confirmar no edital' },
+  { id: 'qc_adm', nome: 'CFO/QC — Administração', nivel: 'Superior (Administração)', limiteEtario: 'Até 32 anos — confirmar no edital' },
+  { id: 'qc_inf', nome: 'CFO/QC — Informática', nivel: 'Superior (TI)', limiteEtario: 'Até 32 anos — confirmar no edital' },
+  { id: 'qc_psi', nome: 'CFO/QC — Psicologia', nivel: 'Superior (Psicologia)', limiteEtario: 'Até 32 anos — confirmar no edital' },
+  { id: 'qc_mag', nome: 'CFO/QC — Magistério', nivel: 'Superior (Licenciatura)', limiteEtario: 'Até 32 anos — confirmar no edital' },
+  { id: 'qc_capelao', nome: 'Capelão Militar', nivel: 'Formação religiosa exigida em edital', limiteEtario: 'De 30 a 40 anos — confirmar no edital' },
 ];
 
 // ─── CONCURSOS CONFIG ─────────────────────────────────────────────────────────
@@ -263,7 +324,8 @@ const concursosConfig = {
     nome: 'Polícia Civil do Estado do Rio de Janeiro',
     status: 'AGUARDANDO EDITAL',
     badgeVariant: 'badge-amber',
-    focoAtual: 'A definir conforme edital',
+    focoAtual: 'PC-RJ — cargo a definir conforme edital',
+    cargoPadrao: 'a-definir',
     disciplinas: initialDisciplinasCIVIL,
     documentos: initialDocumentosCIVIL,
     cargos: cargosCIVIL,
@@ -272,19 +334,20 @@ const concursosConfig = {
   esfcex: {
     logo: '/ESFCEX.png',
     titulo: 'EsFCEx',
-    nome: 'Escola de Saúde e Formação Complementar do Exército',
+    nome: 'EsFCEx — concurso 2026, matrícula prevista em 2027',
     status: 'EDITAL PUBLICADO',
     badgeVariant: 'badge-green',
-    focoAtual: 'CFO/QC — Direito (Tenente)',
+    focoAtual: 'CFO/QC — área a definir',
+    cargoPadrao: 'qc_dir',
     disciplinas: initialDisciplinasESFCEX,
     documentos: initialDocumentosESFCEX,
     cargos: cargosESFCEX,
     hasTAF: true,
     tafInfo: {
-      prova: '12 de julho de 2026',
+      prova: 'Concurso 2026 — matrícula prevista em 2027',
       banca: 'Fundação VUNESP',
       vagas: 'Diversas áreas do QC',
-      etapas: 'EI → Inspeção de Saúde → EAF → Avaliação Psicológica → CFO',
+      etapas: 'EI → Inspeção de Saúde → EAF → Avaliação Psicológica → Investigação Social → Matrícula 2027 → CFO',
     },
   },
 };
@@ -317,8 +380,11 @@ function HubInicial({ onSelect }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
           {Object.entries(concursosConfig).map(([id, c]) => {
-            const storageScope = `painel-concursos:${id}${['prf', 'atamf'].includes(id) ? ':v2' : ''}`;
-            const disciplinas = readSavedState(`${storageScope}:disciplinas`, c.disciplinas);
+            const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
+            const selectedCargoId = readSavedState(`${storageScope}:cargo`, c.cargoPadrao);
+            const selectedCargo = c.cargos.find(cargo => cargo.id === selectedCargoId) || c.cargos[0];
+            const disciplinas = readSavedState(`${storageScope}:disciplinas`, c.disciplinas)
+              .filter(d => !d.cargoId || d.cargoId === selectedCargoId);
             const metaTotal = disciplinas.reduce((a, d) => a + d.meta, 0);
             const feitasTotal = disciplinas.reduce((a, d) => a + d.feitas, 0);
             const pct = metaTotal > 0 ? Math.round((feitasTotal / metaTotal) * 100) : 0;
@@ -339,11 +405,11 @@ function HubInicial({ onSelect }) {
 
                 <div className="hub-card-row">
                   <span className="hub-card-label">Cargo alvo</span>
-                  <span className="hub-card-value">{c.focoAtual}</span>
+                  <span className="hub-card-value">{id === 'esfcex' ? selectedCargo.nome : c.focoAtual}</span>
                 </div>
                 <div className="hub-card-row">
                   <span className="hub-card-label">Meta de estudos</span>
-                  <span className="hub-card-value">{metaTotal}h</span>
+                  <span className="hub-card-value">{id === 'esfcex' && metaTotal === 0 ? 'Definir por área' : `${metaTotal}h`}</span>
                 </div>
                 <div className="hub-card-row">
                   <span className="hub-card-label">Situação</span>
@@ -353,7 +419,7 @@ function HubInicial({ onSelect }) {
                 <div className="hub-card-progress">
                   <div className="hub-card-progress-label">
                     <span>Progresso de Estudos</span>
-                    <span>{feitasTotal}h / {metaTotal}h — {pct}%</span>
+                    <span>{id === 'esfcex' && metaTotal === 0 ? 'Metas configuráveis por matéria' : `${feitasTotal}h / ${metaTotal}h — ${pct}%`}</span>
                   </div>
                   <div className="progress-container">
                     <div className="progress-bar" style={{ width: `${pct}%`, background: 'var(--brand-blue)' }} />
@@ -384,34 +450,51 @@ function readSavedState(key, fallback) {
 
 function PainelConcurso({ id, onBack }) {
   const cfg = concursosConfig[id];
-  const storageScope = `painel-concursos:${id}${['prf', 'atamf'].includes(id) ? ':v2' : ''}`;
-  const hasStudyChecklist = ['abin', 'prf', 'atamf'].includes(id);
+  const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
+  const hasStudyChecklist = ['abin', 'prf', 'atamf', 'civil', 'esfcex'].includes(id);
   const [activeTab, setActiveTab] = useState('visao');
   const contentRef = useRef(null);
-  const [cargoSel, setCargoSel] = useState(() => cfg.cargos.find(c => c.id === cfg.cargoPadrao) || cfg.cargos[0]);
+  const [cargoSel, setCargoSel] = useState(() => {
+    const selectedCargoId = readSavedState(`${storageScope}:cargo`, cfg.cargoPadrao);
+    return cfg.cargos.find(c => c.id === selectedCargoId) || cfg.cargos[0];
+  });
   const [disciplinas, setDisciplinas] = useState(() => readSavedState(`${storageScope}:disciplinas`, cfg.disciplinas.map(d => ({ ...d }))));
   const [docs, setDocs] = useState(() => readSavedState(`${storageScope}:documentos`, cfg.documentos.map(d => ({ ...d }))));
+  const [etapasConcurso, setEtapasConcurso] = useState(() => readSavedState(`${storageScope}:etapas`, id === 'civil' ? etapasConcursoCIVIL : id === 'esfcex' ? etapasConcursoESFCEX : []));
+  const disciplinasAtivas = id === 'esfcex' ? disciplinas.filter(d => !d.cargoId || d.cargoId === cargoSel.id) : disciplinas;
 
   useEffect(() => {
     try {
       localStorage.setItem(`${storageScope}:disciplinas`, JSON.stringify(disciplinas));
       localStorage.setItem(`${storageScope}:documentos`, JSON.stringify(docs));
+      localStorage.setItem(`${storageScope}:etapas`, JSON.stringify(etapasConcurso));
+      localStorage.setItem(`${storageScope}:cargo`, cargoSel.id);
     } catch {
       return;
     }
-  }, [storageScope, disciplinas, docs]);
+  }, [storageScope, disciplinas, docs, etapasConcurso, cargoSel]);
 
   const toggleDoc = docId => setDocs(ds => ds.map(d => d.id === docId && d.actionable ? { ...d, pronto: !d.pronto } : d));
 
-  const updateDocStatus = (docId, statusATA) => setDocs(ds => ds.map(d => (
-    d.id === docId ? { ...d, statusATA, pronto: statusATA === 'ENTREGUE' } : d
+  const updateDocStatus = (docId, status) => setDocs(ds => ds.map(d => (
+    d.id === docId
+      ? id === 'atamf'
+        ? { ...d, statusATA: status, pronto: status === 'ENTREGUE' }
+        : id === 'civil'
+          ? { ...d, statusCivil: status, pronto: status === 'ENTREGUE' }
+          : { ...d, statusEsfcex: status, pronto: status === 'ENTREGUE' }
+      : d
   )));
 
-  const updateHoras = (i, amt) => setDisciplinas(ds => {
-    const next = [...ds];
-    next[i] = { ...next[i], feitas: Math.max(0, Math.min(next[i].meta, next[i].feitas + amt)) };
-    return next;
-  });
+  const toggleEtapaConcurso = etapaId => setEtapasConcurso(es => es.map(e => (
+    e.id === etapaId ? { ...e, concluida: !e.concluida } : e
+  )));
+
+  const updateHoras = (cod, amt) => setDisciplinas(ds => ds.map(d => (
+    d.cod === cod
+      ? { ...d, feitas: Math.max(0, Math.min(d.meta, d.feitas + amt)) }
+      : d
+  )));
 
   const updateMeta = (cod, value) => setDisciplinas(ds => ds.map(d => {
     if (d.cod !== cod) return d;
@@ -425,21 +508,25 @@ function PainelConcurso({ id, onBack }) {
       : d
   )));
 
-  const totalMeta = disciplinas.reduce((a, d) => a + d.meta, 0);
-  const totalFeitas = disciplinas.reduce((a, d) => a + d.feitas, 0);
+  const totalMeta = disciplinasAtivas.reduce((a, d) => a + d.meta, 0);
+  const totalFeitas = disciplinasAtivas.reduce((a, d) => a + d.feitas, 0);
   const pctHoras = totalMeta > 0 ? Math.round((totalFeitas / totalMeta) * 100) : 0;
-  const etapasTotal = disciplinas.reduce((total, d) => total + (d.etapas?.length || 0), 0);
-  const etapasConcluidas = disciplinas.reduce((total, d) => total + (d.etapas?.filter(e => e.concluida).length || 0), 0);
-  const materiasConcluidas = disciplinas.filter(d => d.etapas?.length && d.etapas.every(e => e.concluida)).length;
+  const etapasTotal = disciplinasAtivas.reduce((total, d) => total + (d.etapas?.length || 0), 0);
+  const etapasConcluidas = disciplinasAtivas.reduce((total, d) => total + (d.etapas?.filter(e => e.concluida).length || 0), 0);
+  const materiasConcluidas = disciplinasAtivas.filter(d => d.etapas?.length && d.etapas.every(e => e.concluida)).length;
   const pctEtapas = etapasTotal > 0 ? Math.round((etapasConcluidas / etapasTotal) * 100) : 0;
+  const etapasConcursoConcluidas = etapasConcurso.filter(etapa => etapa.concluida).length;
+  const pctEtapasConcurso = etapasConcurso.length ? Math.round((etapasConcursoConcluidas / etapasConcurso.length) * 100) : 0;
 
   const actionableDocs = docs.filter(d => d.actionable);
-  const docsOk = actionableDocs.filter(d => id === 'atamf' ? d.statusATA === 'ENTREGUE' : d.pronto).length;
+  const docsOk = actionableDocs.filter(d => ['atamf', 'civil', 'esfcex'].includes(id)
+    ? (id === 'atamf' ? d.statusATA : id === 'civil' ? d.statusCivil : d.statusEsfcex) === 'ENTREGUE'
+    : d.pronto).length;
   const docsTotal = actionableDocs.length;
 
   const gruposDocs = [...new Set(docs.map(d => d.grupo))];
 
-  const tabLabel = { visao: 'VISÃO GERAL', trilha: 'TRILHA DE ESTUDOS', documentacao: 'DOCUMENTAÇÃO', taf: 'CONTROLE FÍSICO' };
+  const tabLabel = { visao: 'VISÃO GERAL', trilha: 'TRILHA DE ESTUDOS', documentacao: 'DOCUMENTAÇÃO', etapas: 'ETAPAS DO CONCURSO', taf: 'CONTROLE FÍSICO' };
   const selectTab = tab => {
     setActiveTab(tab);
     contentRef.current?.scrollTo(0, 0);
@@ -460,7 +547,7 @@ function PainelConcurso({ id, onBack }) {
         <div className="sidebar-navigation">
           <div className="nav-section-label">Navegação</div>
           <div className="sidebar-tabs">
-            {['visao', 'trilha', 'documentacao', ...(cfg.hasTAF ? ['taf'] : [])].map(t => (
+            {['visao', 'trilha', 'documentacao', ...(['civil', 'esfcex'].includes(id) ? ['etapas'] : []), ...(cfg.hasTAF ? ['taf'] : [])].map(t => (
               <div key={t} className={`nav-item ${activeTab === t ? 'active' : ''}`} onClick={() => selectTab(t)}>
                 {tabLabel[t]}
               </div>
@@ -482,16 +569,16 @@ function PainelConcurso({ id, onBack }) {
             <>
               <div className="grid-4" style={{ marginBottom: 16 }}>
                 <div className="metric-card">
-                  <span className="metric-label">Carga Horária</span>
-                  <span className="metric-value" style={{ color: pctHoras === 100 ? 'var(--status-success)' : 'var(--brand-blue)' }}>
-                    {totalFeitas}h / {totalMeta}h
+                  <span className="metric-label">{id === 'esfcex' ? 'Horas de estudo' : 'Carga Horária'}</span>
+                  <span className="metric-value" style={{ fontSize: id === 'esfcex' && totalMeta === 0 ? '0.9rem' : undefined, color: pctHoras === 100 ? 'var(--status-success)' : 'var(--brand-blue)' }}>
+                    {id === 'esfcex' && totalMeta === 0 ? 'Defina as metas na trilha' : `${totalFeitas}h / ${totalMeta}h`}
                   </span>
                   <div className="progress-container">
                     <div className="progress-bar" style={{ width: `${pctHoras}%`, background: 'var(--brand-blue)' }} />
                   </div>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">{id === 'atamf' ? 'Docs entregues' : hasStudyChecklist ? 'Docs preparados' : 'Docs Imediatos'}</span>
+                  <span className="metric-label">{['atamf', 'esfcex'].includes(id) ? 'Docs entregues' : hasStudyChecklist ? 'Docs preparados' : 'Docs Imediatos'}</span>
                   <span className="metric-value" style={{ color: docsOk === docsTotal ? 'var(--status-success)' : 'var(--status-warning)' }}>
                     {docsOk} / {docsTotal}
                   </span>
@@ -508,7 +595,7 @@ function PainelConcurso({ id, onBack }) {
                     <div className="progress-container">
                       <div className="progress-bar" style={{ width: `${pctEtapas}%`, background: 'var(--brand-blue)' }} />
                     </div>
-                    <span className="metric-detail">{materiasConcluidas} de {disciplinas.length} matérias concluídas</span>
+                    <span className="metric-detail">{materiasConcluidas} de {disciplinasAtivas.length} matérias concluídas</span>
                   </>}
                 </div>
                 <div className="metric-card">
@@ -542,11 +629,11 @@ function PainelConcurso({ id, onBack }) {
                   </div>
                   <div>
                     <div className="info-row">
-                      <span className="info-label">Carga Horária de Trabalho</span>
-                      <span className="info-value">40h semanais</span>
+                      <span className="info-label">{id === 'esfcex' ? 'Limite etário — confirmar edital' : 'Carga Horária de Trabalho'}</span>
+                      <span className="info-value">{id === 'esfcex' ? cargoSel.limiteEtario : '40h semanais'}</span>
                     </div>
                     <div className="info-row">
-                      <span className="info-label">Situação do Edital</span>
+                      <span className="info-label">{id === 'esfcex' ? 'Calendário' : 'Situação do Edital'}</span>
                       <span className="info-value" style={{ color: 'var(--status-warning)' }}>{cfg.status}</span>
                     </div>
                   </div>
@@ -560,20 +647,24 @@ function PainelConcurso({ id, onBack }) {
             <section className="study-plan">
               <div className="study-plan-header">
                 <div>
-                  <h3 className="panel-title">{id === 'atamf' ? 'Plano de estudos — ATA-MF' : id === 'prf' ? 'Plano de estudos — PRF Administrativo' : 'Plano de estudos por matéria'}</h3>
-                  <p className="study-plan-summary">{materiasConcluidas} de {disciplinas.length} matérias concluídas · {etapasConcluidas} de {etapasTotal} etapas</p>
+                  <h3 className="panel-title">{id === 'atamf' ? 'Plano de estudos — ATA-MF' : id === 'prf' ? 'Plano de estudos — PRF Administrativo' : id === 'civil' ? 'Plano de estudos — PC-RJ' : id === 'esfcex' ? 'Plano de estudos — EsFCEx' : 'Plano de estudos por matéria'}</h3>
+                  <p className="study-plan-summary">{materiasConcluidas} de {disciplinasAtivas.length} matérias concluídas · {etapasConcluidas} de {etapasTotal} etapas</p>
                 </div>
-                <span className="badge badge-blue">META PLANEJADA: {totalMeta}H</span>
+                <span className="badge badge-blue">{id === 'esfcex' && totalMeta === 0 ? 'METAS POR ÁREA' : `META PLANEJADA: ${totalMeta}H`}</span>
               </div>
               <div className="study-notice">
                 {id === 'prf'
                   ? <><strong>Base de preparação:</strong> matérias e metas são editáveis e servem como planejamento inicial de 120h; não representam o conteúdo oficial de um novo edital. A PRF informa ensino médio completo para o cargo de Agente Administrativo. Confirme os requisitos e o programa no edital vigente.</>
                   : id === 'atamf'
                     ? <><strong>Referência histórica:</strong> o último concurso para ATA-MF foi realizado em 2009. A lista é uma base de organização, não o conteúdo oficial de um próximo edital. Consulte o edital histórico no repositório da ENAP e confirme futuras regras em publicação oficial.</>
-                    : <><strong>Referência de planejamento:</strong> conteúdo-base do edital de 2018. As 115h são uma meta inicial do sistema, não uma carga horária oficial da ABIN. Conhecimentos específicos variam conforme cargo e área.</>}
+                    : id === 'civil'
+                      ? <><strong>Base de preparação PC-RJ:</strong> as matérias e a meta inicial de 155h são estimativas editáveis para organização, não conteúdo ou carga horária oficial. Editais, requisitos e disciplinas variam entre estados, cargos e seleções; confirme tudo na publicação vigente.</>
+                      : id === 'esfcex'
+                        ? <><strong>Concurso 2026 / matrícula 2027:</strong> as quatro matérias comuns e o conteúdo específico da área seguem a base informada do edital 2026. Defina as metas de estudo por matéria; o sistema inicia em 0h porque elas não representam a carga oficial do curso. O conteúdo específico depende da área selecionada.</>
+                        : <><strong>Referência de planejamento:</strong> conteúdo-base do edital de 2018. As 115h são uma meta inicial do sistema, não uma carga horária oficial da ABIN. Conhecimentos específicos variam conforme cargo e área.</>}
               </div>
               <div className="study-subject-list">
-                {disciplinas.map((d, i) => {
+                {disciplinasAtivas.map(d => {
                   const concluidas = d.etapas.filter(e => e.concluida).length;
                   const materiaConcluida = concluidas === d.etapas.length;
                   const pct = d.etapas.length ? Math.round((concluidas / d.etapas.length) * 100) : 0;
@@ -593,7 +684,7 @@ function PainelConcurso({ id, onBack }) {
                       </div>
                       <div className="study-subject-progress">
                         <span>{concluidas} de {d.etapas.length} etapas</span>
-                        {id === 'prf' || id === 'atamf'
+                        {['prf', 'atamf', 'civil', 'esfcex'].includes(id)
                           ? <div className="study-meta-entry">
                               <label htmlFor={`meta-${d.cod}`}>Meta</label>
                               <input
@@ -629,8 +720,8 @@ function PainelConcurso({ id, onBack }) {
                       <div className="study-hours">
                         <span>Horas estudadas</span>
                         <div>
-                          <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(i, -1)} disabled={d.feitas === 0}>−1h</button>
-                          <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(i, 1)} disabled={d.feitas === d.meta}>+1h</button>
+                          <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(d.cod, -1)} disabled={d.feitas === 0}>−1h</button>
+                          <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(d.cod, 1)} disabled={d.feitas === d.meta}>+1h</button>
                         </div>
                       </div>
                     </article>
@@ -658,10 +749,10 @@ function PainelConcurso({ id, onBack }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {disciplinas.map((d, i) => {
+                    {disciplinasAtivas.map(d => {
                       const pct = d.meta > 0 ? (d.feitas / d.meta) * 100 : 0;
                       return (
-                        <tr key={i}>
+                        <tr key={d.cod}>
                           <td style={{ fontWeight: 700, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{d.cod}</td>
                           <td style={{ color: '#f1f5f9' }}>{d.nome}</td>
                           <td>
@@ -674,8 +765,8 @@ function PainelConcurso({ id, onBack }) {
                             </div>
                           </td>
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(i, -1)}>−1h</button>
-                            <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(i, 1)}>+1h</button>
+                            <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(d.cod, -1)}>−1h</button>
+                            <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(d.cod, 1)}>+1h</button>
                           </td>
                           <td>
                             {pct >= 100
@@ -698,9 +789,9 @@ function PainelConcurso({ id, onBack }) {
             <div className="panel">
               <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="panel-title">
-                  {id === 'abin' ? 'Documentos e alertas — ABIN' : id === 'prf' ? 'Documentos — PRF Administrativo' : id === 'atamf' ? 'Documentação — ATA-MF' : `Matriz Documental — ${cfg.titulo}`}
+                  {id === 'abin' ? 'Documentos e alertas — ABIN' : id === 'prf' ? 'Documentos — PRF Administrativo' : id === 'atamf' ? 'Documentação — ATA-MF' : id === 'civil' ? 'Documentação — PC-RJ' : id === 'esfcex' ? 'Documentação — EsFCEx' : `Matriz Documental — ${cfg.titulo}`}
                 </h3>
-                <span className="badge badge-blue">{id === 'atamf' ? 'ENTREGUES' : hasStudyChecklist ? 'PREPARADOS' : 'IMEDIATOS'}: {docsOk}/{docsTotal}</span>
+                <span className="badge badge-blue">{['atamf', 'civil', 'esfcex'].includes(id) ? 'ENTREGUES' : hasStudyChecklist ? 'PREPARADOS' : 'IMEDIATOS'}: {docsOk}/{docsTotal}</span>
               </div>
 
               {hasStudyChecklist && (
@@ -719,12 +810,26 @@ function PainelConcurso({ id, onBack }) {
                     <div className="study-notice study-notice-warning">
                       <strong>Posse e documentação condicional:</strong> providencie somente quando houver orientação oficial; cotas e documentação de deficiência dependem da situação do candidato e das regras do edital.
                     </div>
-                  </> : <>
+                  </> : id === 'atamf' ? <>
                     <div className="study-notice">
                       <strong>Referência histórica:</strong> o último concurso para ATA-MF ocorreu em 2009. Prepare documentos pessoais e escolares, mas confirme requisitos e validade no próximo edital.
                     </div>
                     <div className="study-notice study-notice-warning">
                       <strong>Certidões e documentos condicionais:</strong> aguarde o edital ou a convocação antes de solicitar certidões e providenciar documentação de posse, cotas ou deficiência.
+                    </div>
+                  </> : id === 'civil' ? <>
+                    <div className="study-notice">
+                      <strong>Concurso estadual:</strong> este painel está organizado como referência para PC-RJ. A lista não substitui o edital; requisitos e documentos variam por estado e cargo.
+                    </div>
+                    <div className="study-notice study-notice-warning">
+                      <strong>Certidões e avaliações:</strong> deixe certidões, exames médicos, TAF, avaliação psicológica e documentos de posse como “AGUARDAR EDITAL” até a convocação oficial.
+                    </div>
+                  </> : <>
+                    <div className="study-notice">
+                      <strong>Concurso 2026:</strong> use os documentos listados como organização prévia; a exigência final depende da área e da convocação oficial.
+                    </div>
+                    <div className="study-notice study-notice-warning">
+                      <strong>Etapas seletivas:</strong> certidões, exames e documentos de matrícula devem seguir as instruções e prazos do edital/convocação. Limites etários variam entre QC e Capelães.
                     </div>
                   </>}
                 </div>
@@ -750,7 +855,7 @@ function PainelConcurso({ id, onBack }) {
                         {docs.filter(d => d.grupo === grupo).map(d => (
                           <tr key={d.id}>
                             <td style={{ textAlign: 'center' }}>
-                              {id === 'atamf'
+                              {['atamf', 'civil', 'esfcex'].includes(id)
                                 ? <span style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>—</span>
                                 : d.actionable
                                 ? <input type="checkbox" className="task-checkbox" checked={d.pronto} onChange={() => toggleDoc(d.id)} />
@@ -764,11 +869,11 @@ function PainelConcurso({ id, onBack }) {
                             </td>
                             <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{d.momento}</td>
                             <td>
-                              {id === 'atamf'
+                              {['atamf', 'civil', 'esfcex'].includes(id)
                                 ? <select
                                     className="select-control doc-status-control"
                                     aria-label={`Status de ${d.nome}`}
-                                    value={d.statusATA}
+                                    value={id === 'atamf' ? d.statusATA : id === 'civil' ? d.statusCivil : d.statusEsfcex}
                                     onChange={e => updateDocStatus(d.id, e.target.value)}
                                   >
                                     <option value="PREPARAR">PREPARAR</option>
@@ -791,13 +896,51 @@ function PainelConcurso({ id, onBack }) {
             </div>
           )}
 
+          {activeTab === 'etapas' && ['civil', 'esfcex'].includes(id) && (
+            <section className="study-plan">
+              <div className="study-plan-header">
+                <div>
+                  <h3 className="panel-title">Etapas do concurso — {id === 'esfcex' ? 'EsFCEx 2026' : 'PC-RJ'}</h3>
+                  <p className="study-plan-summary">
+                    {etapasConcursoConcluidas} de {etapasConcurso.length} etapas concluídas
+                  </p>
+                </div>
+                <span className="badge badge-blue">ACOMPANHAMENTO</span>
+              </div>
+              <div className="progress-container stage-progress">
+                <div className="progress-bar" style={{ width: `${pctEtapasConcurso}%`, background: 'var(--brand-blue)' }} />
+              </div>
+              <div className="study-notice">
+                {id === 'esfcex'
+                  ? <><strong>Edital 2026:</strong> EI, Inspeção de Saúde, EAF, Avaliação Psicológica e Investigação Social constam entre as fases. Heteroidentificação/verificação documental depende da situação do candidato. A matrícula está prevista para 2027; siga os atos oficiais para confirmar datas e sequência.</>
+                  : <><strong>Etapas variáveis:</strong> prova discursiva, TAF e avaliação de títulos dependem do cargo e do edital. A referência PC-RJ pode incluir psicotécnico, provas de conhecimento, exame médico, capacidade física, investigação social e curso de formação. Confirme a sequência oficial quando o edital for publicado.</>}
+              </div>
+              <div className="stage-list">
+                {etapasConcurso.map(etapa => (
+                  <label className="stage-item" key={etapa.id}>
+                    <input
+                      type="checkbox"
+                      className="task-checkbox"
+                      checked={etapa.concluida}
+                      onChange={() => toggleEtapaConcurso(etapa.id)}
+                    />
+                    <span>{etapa.label}</span>
+                    <span className={`badge ${etapa.concluida ? 'badge-green' : 'badge-neutral'}`}>
+                      {etapa.concluida ? 'CONCLUÍDA' : 'PENDENTE'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* ── TAF / EAF ── */}
           {activeTab === 'taf' && cfg.hasTAF && (
             <div className="panel">
               <div className="panel-header"><h3 className="panel-title">{id === 'esfcex' ? 'Exame de Aptidão Física (EAF) — EsFCEx' : 'Controle Físico — TAF'}</h3></div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
                 {id === 'esfcex'
-                  ? 'O EAF é etapa eliminatória do concurso. Inclui corrida de 12 minutos e flexão de braços. O condicionamento deve ser iniciado imediatamente.'
+                  ? 'O EAF consta entre as etapas do concurso 2026. Exercícios, índices, critérios e padrões por categoria devem ser conferidos no edital e na convocação da área escolhida.'
                   : 'O TAF é etapa eliminatória. O condicionamento físico deve ser iniciado concomitantemente ao estudo teórico.'}
               </p>
 
@@ -806,7 +949,7 @@ function PainelConcurso({ id, onBack }) {
                   <div className="grid-2">
                     <div>
                       <div className="info-row">
-                        <span className="info-label">Data da Prova (EI)</span>
+                        <span className="info-label">Concurso / matrícula prevista</span>
                         <span className="info-value" style={{ color: '#4da3e8' }}>{cfg.tafInfo.prova}</span>
                       </div>
                       <div className="info-row">
@@ -828,7 +971,11 @@ function PainelConcurso({ id, onBack }) {
                 </div>
               )}
 
-              <div className="grid-2">
+              {id === 'esfcex' ? (
+                <div className="study-notice study-notice-warning">
+                  <strong>Índices do EAF:</strong> consultar o edital 2026 e as instruções oficiais da convocação. Não use índices de seleções anteriores como padrão para esta área.
+                </div>
+              ) : <div className="grid-2">
                 <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)', borderRadius: 6, padding: 20 }}>
                   <div style={{ fontWeight: 700, color: '#f1f5f9', marginBottom: 12 }}>Corrida — 12 minutos</div>
                   <div className="info-row">
@@ -866,7 +1013,7 @@ function PainelConcurso({ id, onBack }) {
                     </>
                   )}
                 </div>
-              </div>
+              </div>}
             </div>
           )}
 

@@ -701,6 +701,40 @@ body {
   margin-bottom: 22px;
 }
 
+.stage-progress {
+  margin-top: -8px;
+}
+
+.stage-list {
+  display: grid;
+  gap: 8px;
+}
+
+.stage-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.stage-item:has(input:checked) {
+  color: var(--text-primary);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.stage-item .task-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
 /* ── Progress ────────────────────────────────────── */
 .progress-container {
   background: var(--bg-surface-elevated);
