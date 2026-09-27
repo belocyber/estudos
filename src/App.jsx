@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './index.css';
+
+const INITIAL_NOW = Date.now();
 
 // ─── DADOS ABIN ──────────────────────────────────────────────────────────────
 const etapasEstudoABIN = [
@@ -355,19 +357,52 @@ const concursosConfig = {
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [selected, setSelected] = useState(null);
+  const [startStudyOnOpen, setStartStudyOnOpen] = useState(null);
+
+  const startStudy = id => {
+    setStartStudyOnOpen(Date.now());
+    setSelected(id);
+  };
+
+  const returnToHub = () => {
+    setSelected(null);
+    setStartStudyOnOpen(false);
+  };
 
   return (
     <div className="app-container">
       {!selected
-        ? <HubInicial onSelect={setSelected} />
-        : <PainelConcurso id={selected} onBack={() => setSelected(null)} />
+        ? <HubInicial onSelect={setSelected} onStartStudy={startStudy} />
+        : <PainelConcurso id={selected} onBack={returnToHub} autoStartStudy={startStudyOnOpen} />
       }
     </div>
   );
 }
 
 // ─── HUB INICIAL ─────────────────────────────────────────────────────────────
-function HubInicial({ onSelect }) {
+function HubInicial({ onSelect, onStartStudy }) {
+  const concursosOrdenados = Object.entries(concursosConfig)
+    .map(([id, c], order) => {
+      const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
+      const selectedCargoId = readSavedState(`${storageScope}:cargo`, c.cargoPadrao);
+      const selectedCargo = c.cargos.find(cargo => cargo.id === selectedCargoId) || c.cargos[0];
+      const disciplinas = readSavedState(`${storageScope}:disciplinas`, c.disciplinas)
+        .filter(d => !d.cargoId || d.cargoId === selectedCargoId);
+      const metaTotal = disciplinas.reduce((a, d) => a + d.meta, 0);
+      const feitasTotal = disciplinas.reduce((a, d) => a + d.feitas, 0);
+      const pct = metaTotal > 0 ? Math.min(100, Math.round((feitasTotal / metaTotal) * 100)) : 0;
+      return { id, c, order, selectedCargo, metaTotal, feitasTotal, pct };
+    })
+    .sort((a, b) => b.feitasTotal - a.feitasTotal || a.order - b.order);
+  const focoPrincipal = concursosOrdenados[0];
+  const todayKey = getStudyDateKey(new Date());
+  const studiedToday = concursosOrdenados.some(({ id }) => {
+    const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
+    const studyDays = readSavedState(`${storageScope}:study-days`, []);
+    const timer = readSavedState(`${storageScope}:timer`, null);
+    return studyDays.includes(todayKey) || (timer?.startedAt && getStudyDateKey(new Date(timer.startedAt)) <= todayKey);
+  });
+
   return (
     <div className="hub-wrapper">
       <header className="hub-topbar">
@@ -375,21 +410,61 @@ function HubInicial({ onSelect }) {
       </header>
 
       <div className="hub-content">
-        <h2 className="hub-heading">Bases Operacionais</h2>
-        <p className="hub-subheading">Selecione um concurso para entrar no monitoramento específico.</p>
+        <section className="hub-study-overview">
+          <div className="hub-study-intro">
+            <h1>Seu acompanhamento de estudos</h1>
+            <p>Escolha um concurso e mantenha sua constância.</p>
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-          {Object.entries(concursosConfig).map(([id, c]) => {
-            const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
-            const selectedCargoId = readSavedState(`${storageScope}:cargo`, c.cargoPadrao);
-            const selectedCargo = c.cargos.find(cargo => cargo.id === selectedCargoId) || c.cargos[0];
-            const disciplinas = readSavedState(`${storageScope}:disciplinas`, c.disciplinas)
-              .filter(d => !d.cargoId || d.cargoId === selectedCargoId);
-            const metaTotal = disciplinas.reduce((a, d) => a + d.meta, 0);
-            const feitasTotal = disciplinas.reduce((a, d) => a + d.feitas, 0);
-            const pct = metaTotal > 0 ? Math.round((feitasTotal / metaTotal) * 100) : 0;
+          <aside className={`hub-study-alert${studiedToday ? ' hub-study-alert-complete' : ''}`} aria-live="polite">
+            <span className="hub-study-alert-icon" aria-hidden="true">{studiedToday ? '✓' : '!'}</span>
+            <div className="hub-study-alert-copy">
+              <span className="hub-study-alert-label">{studiedToday ? 'ESTUDO DE HOJE' : 'LEMBRETE DE ESTUDO'}</span>
+              <strong>{studiedToday ? 'Sua sessão de hoje já foi registrada.' : 'Você ainda não estudou hoje.'}</strong>
+              <span>{studiedToday ? 'Mantenha o ritmo, uma sessão de cada vez.' : `Comece pelo seu foco: ${focoPrincipal.c.titulo}.`}</span>
+            </div>
+            <button
+              className="hub-study-alert-action"
+              onClick={() => studiedToday ? onSelect(focoPrincipal.id) : onStartStudy(focoPrincipal.id)}
+            >
+              {studiedToday ? 'Ver painel' : 'Começar sessão'}
+              <span aria-hidden="true">↗</span>
+            </button>
+          </aside>
+
+          <div className="hub-focus-row">
+            <div>
+              <span className="hub-focus-label">FOCO MAIS ESTUDADO</span>
+              <strong>{focoPrincipal.c.titulo}</strong>
+              <span>{formatStudyHours(focoPrincipal.feitasTotal)} de estudo acumulado</span>
+            </div>
+            <button className="hub-focus-action" onClick={() => onSelect(focoPrincipal.id)}>
+              Abrir painel <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+
+          <nav className="hub-competition-shortcuts" aria-label="Acesso aos concursos">
+            {concursosOrdenados.map(({ id, c }) => (
+              <button key={id} onClick={() => onSelect(id)} title={`Abrir ${c.titulo}`}>
+                {c.titulo}
+              </button>
+            ))}
+          </nav>
+        </section>
+
+        <div className="hub-heading-row">
+          <div>
+            <h2 className="hub-heading">Painéis de concurso</h2>
+            <p className="hub-subheading">Organizados pela carga de estudo acumulada.</p>
+          </div>
+          <span className="hub-sort-note">MAIOR CARGA ACUMULADA</span>
+        </div>
+
+        <div className="hub-card-grid">
+          {concursosOrdenados.map(({ id, c, selectedCargo, metaTotal, feitasTotal, pct }, index) => {
+            const priority = index === 0 && feitasTotal > 0;
             return (
-              <div key={id} className="hub-card" onClick={() => onSelect(id)}>
+              <div key={id} className={`hub-card${priority ? ' hub-card-priority' : ''}`} onClick={() => onSelect(id)}>
                 <div className="hub-card-header">
                   <div className="hub-card-identity">
                     <img src={c.logo} alt={c.titulo} className="hub-card-logo" />
@@ -398,7 +473,10 @@ function HubInicial({ onSelect }) {
                       <div className="hub-card-sub">{c.nome}</div>
                     </div>
                   </div>
-                  <span className={`badge ${c.badgeVariant}`}>{c.status.split(' ')[0]}</span>
+                  <div className="hub-card-badges">
+                    {priority && <span className="hub-priority-badge">PRIORIDADE</span>}
+                    <span className={`badge ${c.badgeVariant}`}>{c.status.split(' ')[0]}</span>
+                  </div>
                 </div>
 
                 <hr className="hub-card-divider" />
@@ -419,7 +497,7 @@ function HubInicial({ onSelect }) {
                 <div className="hub-card-progress">
                   <div className="hub-card-progress-label">
                     <span>Progresso de Estudos</span>
-                    <span>{id === 'esfcex' && metaTotal === 0 ? 'Metas configuráveis por matéria' : `${feitasTotal}h / ${metaTotal}h — ${pct}%`}</span>
+                    <span>{id === 'esfcex' && metaTotal === 0 ? 'Metas configuráveis por matéria' : `${formatStudyHours(feitasTotal)} / ${metaTotal}h — ${pct}%`}</span>
                   </div>
                   <div className="progress-container">
                     <div className="progress-bar" style={{ width: `${pct}%`, background: 'var(--brand-blue)' }} />
@@ -448,31 +526,205 @@ function readSavedState(key, fallback) {
   }
 }
 
-function PainelConcurso({ id, onBack }) {
+function formatStudyHours(hours) {
+  const totalMinutes = Math.round(hours * 60);
+  const fullHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  return remainingMinutes ? `${fullHours}h ${remainingMinutes}min` : `${fullHours}h`;
+}
+
+function formatTimer(milliseconds) {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+function getStudyDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getStudyDateKeys(startedAt, endedAt) {
+  const dates = [];
+  const cursor = new Date(startedAt);
+  while (cursor.getTime() < endedAt) {
+    dates.push(getStudyDateKey(cursor));
+    cursor.setHours(24, 0, 0, 0);
+  }
+  return dates;
+}
+
+function PainelConcurso({ id, onBack, autoStartStudy = false }) {
   const cfg = concursosConfig[id];
   const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
   const hasStudyChecklist = ['abin', 'prf', 'atamf', 'civil', 'esfcex'].includes(id);
-  const [activeTab, setActiveTab] = useState('visao');
+  const [activeTab, setActiveTab] = useState(autoStartStudy ? 'trilha' : 'visao');
   const contentRef = useRef(null);
+  const autoStartHandled = useRef(false);
   const [cargoSel, setCargoSel] = useState(() => {
     const selectedCargoId = readSavedState(`${storageScope}:cargo`, cfg.cargoPadrao);
     return cfg.cargos.find(c => c.id === selectedCargoId) || cfg.cargos[0];
   });
   const [disciplinas, setDisciplinas] = useState(() => readSavedState(`${storageScope}:disciplinas`, cfg.disciplinas.map(d => ({ ...d }))));
+  const [timerSession, setTimerSession] = useState(() => readSavedState(`${storageScope}:timer`, {
+    cod: cfg.disciplinas[0]?.cod || '',
+    elapsedMs: 0,
+    startedAt: null,
+  }));
+  const [timerNow, setTimerNow] = useState(timerSession.startedAt || autoStartStudy || INITIAL_NOW);
+  const [studyDays, setStudyDays] = useState(() => readSavedState(`${storageScope}:study-days`, []));
+  const [trackingStart] = useState(() => readSavedState(`${storageScope}:tracking-start`, getStudyDateKey(new Date(INITIAL_NOW))));
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date(INITIAL_NOW).getFullYear(), new Date(INITIAL_NOW).getMonth(), 1));
   const [docs, setDocs] = useState(() => readSavedState(`${storageScope}:documentos`, cfg.documentos.map(d => ({ ...d }))));
   const [etapasConcurso, setEtapasConcurso] = useState(() => readSavedState(`${storageScope}:etapas`, id === 'civil' ? etapasConcursoCIVIL : id === 'esfcex' ? etapasConcursoESFCEX : []));
   const disciplinasAtivas = id === 'esfcex' ? disciplinas.filter(d => !d.cargoId || d.cargoId === cargoSel.id) : disciplinas;
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setTimerNow(Date.now()), timerSession.startedAt ? 1000 : 60000);
+    return () => window.clearInterval(interval);
+  }, [timerSession.startedAt]);
+
+  const saveTimerSession = useCallback(nextSession => {
+    setTimerSession(nextSession);
+    try {
+      localStorage.setItem(`${storageScope}:timer`, JSON.stringify(nextSession));
+    } catch {
+      return;
+    }
+  }, [storageScope]);
+
+  useEffect(() => {
+    if (!autoStartStudy || autoStartHandled.current || timerSession.startedAt) return;
+    autoStartHandled.current = true;
+    saveTimerSession({ ...timerSession, cod: timerSession.cod || disciplinasAtivas[0]?.cod || '', startedAt: autoStartStudy });
+  }, [autoStartStudy, timerSession, disciplinasAtivas, saveTimerSession, storageScope]);
+
+  const elapsedTimerMs = timerSession.elapsedMs + (timerSession.startedAt ? Math.max(0, timerNow - timerSession.startedAt) : 0);
+  const timerSubjectCod = disciplinasAtivas.some(d => d.cod === timerSession.cod)
+    ? timerSession.cod
+    : disciplinasAtivas[0]?.cod || '';
+  const recordStudyPeriod = (startedAt, endedAt) => {
+    if (!startedAt || endedAt <= startedAt) return;
+    const nextDays = [...new Set([...studyDays, ...getStudyDateKeys(startedAt, endedAt)])].sort();
+    setStudyDays(nextDays);
+    try {
+      localStorage.setItem(`${storageScope}:study-days`, JSON.stringify(nextDays));
+    } catch {
+      return;
+    }
+  };
+
+  const toggleTimer = () => {
+    if (timerSession.startedAt) {
+      const now = Date.now();
+      const elapsedMs = timerSession.elapsedMs + Math.max(0, now - timerSession.startedAt);
+      recordStudyPeriod(timerSession.startedAt, now);
+      saveTimerSession({ ...timerSession, cod: timerSubjectCod, elapsedMs, startedAt: null });
+    } else {
+      const now = Date.now();
+      setTimerNow(now);
+      saveTimerSession({ ...timerSession, cod: timerSubjectCod, startedAt: now });
+    }
+  };
+
+  const finishTimer = () => {
+    const now = Date.now();
+    const elapsedMs = timerSession.elapsedMs + (timerSession.startedAt ? Math.max(0, now - timerSession.startedAt) : 0);
+    if (elapsedMs > 0) {
+      const loggedHours = elapsedMs / 3600000;
+      setDisciplinas(ds => ds.map(d => d.cod === timerSession.cod ? { ...d, feitas: d.feitas + loggedHours } : d));
+    }
+    if (timerSession.startedAt) recordStudyPeriod(timerSession.startedAt, now);
+    saveTimerSession({ ...timerSession, cod: timerSubjectCod, elapsedMs: 0, startedAt: null });
+  };
+
+  const today = new Date(timerNow);
+  const visibleStudyDays = timerSession.startedAt
+    ? [...new Set([...studyDays, ...getStudyDateKeys(timerSession.startedAt, timerNow + 1)])]
+    : studyDays;
+  const studyDaySet = new Set(visibleStudyDays);
+  const studyDaysLastSeven = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - offset);
+    return getStudyDateKey(date);
+  }).filter(date => studyDaySet.has(date)).length;
+  const streakDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (!studyDaySet.has(getStudyDateKey(streakDate))) streakDate.setDate(streakDate.getDate() - 1);
+  let currentStudyStreak = 0;
+  while (studyDaySet.has(getStudyDateKey(streakDate))) {
+    currentStudyStreak += 1;
+    streakDate.setDate(streakDate.getDate() - 1);
+  }
+  const calendarYear = calendarMonth.getFullYear();
+  const calendarMonthIndex = calendarMonth.getMonth();
+  const calendarDaysInMonth = new Date(calendarYear, calendarMonthIndex + 1, 0).getDate();
+  const calendarOffset = (new Date(calendarYear, calendarMonthIndex, 1).getDay() + 6) % 7;
+  const calendarCells = [
+    ...Array.from({ length: calendarOffset }, (_, index) => ({ key: `empty-${index}` })),
+    ...Array.from({ length: calendarDaysInMonth }, (_, index) => {
+      const day = index + 1;
+      const date = new Date(calendarYear, calendarMonthIndex, day);
+      const dateKey = getStudyDateKey(date);
+      const status = studyDaySet.has(dateKey)
+        ? 'studied'
+        : dateKey >= trackingStart && dateKey < getStudyDateKey(today)
+          ? 'missed'
+          : 'upcoming';
+      return { key: dateKey, day, dateKey, status };
+    }),
+  ];
+  while (calendarCells.length % 7 !== 0) calendarCells.push({ key: `empty-end-${calendarCells.length}` });
+  const calendarMonthLabel = calendarMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const calendarMonthStudied = calendarCells.filter(cell => cell.status === 'studied').length;
+  const calendarMonthMissed = calendarCells.filter(cell => cell.status === 'missed').length;
+
+  const changeCalendarMonth = amount => setCalendarMonth(current => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+
+  const renderStudyTimer = () => (
+    <div className="study-timer">
+      <div className="study-timer-info">
+        <span className="study-timer-label">CRONÔMETRO DE ESTUDO</span>
+        <strong className="study-timer-clock" aria-live="off">{formatTimer(elapsedTimerMs)}</strong>
+        <span className="study-timer-subject">{timerSession.startedAt ? 'Sessão em andamento' : elapsedTimerMs ? 'Sessão pausada' : 'Pronto para estudar'}</span>
+      </div>
+      <label className="study-timer-select-wrap">
+        <span>Matéria</span>
+        <select
+          className="select-control study-timer-select"
+          value={timerSubjectCod}
+          disabled={Boolean(timerSession.startedAt) || elapsedTimerMs > 0 || disciplinasAtivas.length === 0}
+          onChange={e => saveTimerSession({ ...timerSession, cod: e.target.value })}
+        >
+          {disciplinasAtivas.map(d => <option key={d.cod} value={d.cod}>{d.nome}</option>)}
+        </select>
+      </label>
+      <div className="study-timer-actions">
+        <button className="hub-access-btn timer-toggle-btn" onClick={toggleTimer} disabled={!timerSubjectCod}>
+          {timerSession.startedAt ? 'Pausar' : elapsedTimerMs ? 'Retomar' : 'Iniciar estudo'}
+        </button>
+        <button className="ctrl-btn timer-finish-btn" onClick={finishTimer} disabled={!elapsedTimerMs}>
+          Concluir e salvar
+        </button>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     try {
       localStorage.setItem(`${storageScope}:disciplinas`, JSON.stringify(disciplinas));
       localStorage.setItem(`${storageScope}:documentos`, JSON.stringify(docs));
       localStorage.setItem(`${storageScope}:etapas`, JSON.stringify(etapasConcurso));
+      localStorage.setItem(`${storageScope}:study-days`, JSON.stringify(studyDays));
+      localStorage.setItem(`${storageScope}:tracking-start`, trackingStart);
       localStorage.setItem(`${storageScope}:cargo`, cargoSel.id);
     } catch {
       return;
     }
-  }, [storageScope, disciplinas, docs, etapasConcurso, cargoSel]);
+  }, [storageScope, disciplinas, docs, etapasConcurso, studyDays, trackingStart, cargoSel]);
 
   const toggleDoc = docId => setDocs(ds => ds.map(d => d.id === docId && d.actionable ? { ...d, pronto: !d.pronto } : d));
 
@@ -490,16 +742,10 @@ function PainelConcurso({ id, onBack }) {
     e.id === etapaId ? { ...e, concluida: !e.concluida } : e
   )));
 
-  const updateHoras = (cod, amt) => setDisciplinas(ds => ds.map(d => (
-    d.cod === cod
-      ? { ...d, feitas: Math.max(0, Math.min(d.meta, d.feitas + amt)) }
-      : d
-  )));
-
   const updateMeta = (cod, value) => setDisciplinas(ds => ds.map(d => {
     if (d.cod !== cod) return d;
     const meta = Math.max(0, Number(value) || 0);
-    return { ...d, meta, feitas: Math.min(d.feitas, meta) };
+    return { ...d, meta };
   }));
 
   const toggleEtapa = (cod, etapaId) => setDisciplinas(ds => ds.map(d => (
@@ -510,11 +756,10 @@ function PainelConcurso({ id, onBack }) {
 
   const totalMeta = disciplinasAtivas.reduce((a, d) => a + d.meta, 0);
   const totalFeitas = disciplinasAtivas.reduce((a, d) => a + d.feitas, 0);
-  const pctHoras = totalMeta > 0 ? Math.round((totalFeitas / totalMeta) * 100) : 0;
+  const pctHoras = totalMeta > 0 ? Math.min(100, Math.round((totalFeitas / totalMeta) * 100)) : 0;
   const etapasTotal = disciplinasAtivas.reduce((total, d) => total + (d.etapas?.length || 0), 0);
   const etapasConcluidas = disciplinasAtivas.reduce((total, d) => total + (d.etapas?.filter(e => e.concluida).length || 0), 0);
   const materiasConcluidas = disciplinasAtivas.filter(d => d.etapas?.length && d.etapas.every(e => e.concluida)).length;
-  const pctEtapas = etapasTotal > 0 ? Math.round((etapasConcluidas / etapasTotal) * 100) : 0;
   const etapasConcursoConcluidas = etapasConcurso.filter(etapa => etapa.concluida).length;
   const pctEtapasConcurso = etapasConcurso.length ? Math.round((etapasConcursoConcluidas / etapasConcurso.length) * 100) : 0;
 
@@ -569,76 +814,85 @@ function PainelConcurso({ id, onBack }) {
             <>
               <div className="grid-4" style={{ marginBottom: 16 }}>
                 <div className="metric-card">
-                  <span className="metric-label">{id === 'esfcex' ? 'Horas de estudo' : 'Carga Horária'}</span>
+                  <span className="metric-label">Horas estudadas</span>
                   <span className="metric-value" style={{ fontSize: id === 'esfcex' && totalMeta === 0 ? '0.9rem' : undefined, color: pctHoras === 100 ? 'var(--status-success)' : 'var(--brand-blue)' }}>
-                    {id === 'esfcex' && totalMeta === 0 ? 'Defina as metas na trilha' : `${totalFeitas}h / ${totalMeta}h`}
+                    {id === 'esfcex' && totalMeta === 0 ? 'Defina as metas na trilha' : `${formatStudyHours(totalFeitas)} / ${totalMeta}h`}
                   </span>
                   <div className="progress-container">
                     <div className="progress-bar" style={{ width: `${pctHoras}%`, background: 'var(--brand-blue)' }} />
                   </div>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">{['atamf', 'esfcex'].includes(id) ? 'Docs entregues' : hasStudyChecklist ? 'Docs preparados' : 'Docs Imediatos'}</span>
-                  <span className="metric-value" style={{ color: docsOk === docsTotal ? 'var(--status-success)' : 'var(--status-warning)' }}>
-                    {docsOk} / {docsTotal}
-                  </span>
-                  <div className="progress-container">
-                    <div className="progress-bar" style={{ width: docsTotal > 0 ? `${Math.round(docsOk / docsTotal * 100)}%` : '0%', background: 'var(--status-success)' }} />
-                  </div>
+                  <span className="metric-label">Dias estudados</span>
+                  <span className="metric-value" style={{ color: 'var(--status-success)' }}>{studyDays.length}</span>
+                  <span className="metric-detail">Dias com sessão registrada</span>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">{hasStudyChecklist ? 'Etapas do plano' : 'Simulados'}</span>
-                  <span className="metric-value" style={{ color: 'var(--text-secondary)' }}>
-                    {hasStudyChecklist ? `${etapasConcluidas} / ${etapasTotal}` : '0 realizados'}
-                  </span>
-                  {hasStudyChecklist && <>
-                    <div className="progress-container">
-                      <div className="progress-bar" style={{ width: `${pctEtapas}%`, background: 'var(--brand-blue)' }} />
-                    </div>
-                    <span className="metric-detail">{materiasConcluidas} de {disciplinasAtivas.length} matérias concluídas</span>
-                  </>}
+                  <span className="metric-label">Últimos 7 dias</span>
+                  <span className="metric-value" style={{ color: 'var(--brand-blue)' }}>{studyDaysLastSeven} / 7</span>
+                  <span className="metric-detail">Dias com estudo</span>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">Próximo Marco</span>
-                  <span className="metric-value" style={{ fontSize: '0.875rem', color: 'var(--status-danger)' }}>{cfg.status}</span>
+                  <span className="metric-label">Sequência atual</span>
+                  <span className="metric-value" style={{ color: 'var(--status-warning)' }}>{currentStudyStreak}</span>
+                  <span className="metric-detail">Dias consecutivos</span>
                 </div>
               </div>
 
-              <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f1f5f9' }}>{cfg.nome}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 3 }}>Monitoramento Tático Individualizado</div>
+              <section className="panel study-calendar" aria-label={`Calendário de estudos de ${cfg.titulo}`}>
+                <header className="study-calendar-header">
+                  <div>
+                    <h3 className="panel-title">Consistência dos estudos</h3>
+                    <p className="study-calendar-summary">
+                      {calendarMonthStudied} {calendarMonthStudied === 1 ? 'dia estudado' : 'dias estudados'} · {calendarMonthMissed} {calendarMonthMissed === 1 ? 'dia sem estudo' : 'dias sem estudo'} em {calendarMonthLabel}
+                    </p>
+                  </div>
+                  <div className="study-calendar-navigation">
+                    <button className="calendar-nav-btn" aria-label="Mês anterior" title="Mês anterior" onClick={() => changeCalendarMonth(-1)}>‹</button>
+                    <strong>{calendarMonthLabel}</strong>
+                    <button className="calendar-nav-btn" aria-label="Próximo mês" title="Próximo mês" onClick={() => changeCalendarMonth(1)}>›</button>
+                    {(calendarMonth.getFullYear() !== today.getFullYear() || calendarMonth.getMonth() !== today.getMonth()) && (
+                      <button className="calendar-today-btn" onClick={() => setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1))}>Hoje</button>
+                    )}
+                  </div>
+                </header>
+                <div className="study-calendar-grid" role="grid" aria-label={calendarMonthLabel}>
+                  {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(day => (
+                    <span className="study-calendar-weekday" role="columnheader" key={day}>{day}</span>
+                  ))}
+                  {calendarCells.map(cell => (
+                    <div className="study-calendar-cell" role="gridcell" key={cell.key}>
+                      {cell.day && (
+                        <span
+                          className={`study-calendar-day study-calendar-day-${cell.status}${cell.dateKey === getStudyDateKey(today) ? ' study-calendar-day-today' : ''}`}
+                          aria-label={`${cell.day} de ${calendarMonthLabel}: ${cell.status === 'studied' ? 'estudou' : cell.status === 'missed' ? 'sem estudo' : 'sem registro'}`}
+                          title={cell.status === 'studied' ? 'Estudou neste dia' : cell.status === 'missed' ? 'Nenhum estudo registrado' : 'Data futura ou fora do período acompanhado'}
+                        >
+                          <span>{cell.day}</span>
+                          {cell.status === 'studied' && <span className="study-calendar-mark" aria-hidden="true">✓</span>}
+                          {cell.status === 'missed' && <span className="study-calendar-mark" aria-hidden="true">×</span>}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <select className="select-control" value={cargoSel.id} onChange={e => setCargoSel(cfg.cargos.find(c => c.id === e.target.value))}>
-                  {cfg.cargos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-              </div>
+                <div className="study-calendar-legend" aria-label="Legenda">
+                  <span><i className="calendar-legend-dot calendar-legend-studied" />Estudou</span>
+                  <span><i className="calendar-legend-dot calendar-legend-missed" />Sem estudo</span>
+                  <span><i className="calendar-legend-dot calendar-legend-upcoming" />Futuro / sem acompanhamento</span>
+                </div>
+              </section>
 
-              <div className="panel">
-                <div className="panel-header"><h3 className="panel-title">Situação do Cargo</h3></div>
-                <div className="grid-2">
-                  <div>
-                    <div className="info-row">
-                      <span className="info-label">Cargo Alvo</span>
-                      <span className="info-value" style={{ color: '#4da3e8' }}>{cargoSel.nome}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">Nível Exigido</span>
-                      <span className="info-value">{cargoSel.nivel}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="info-row">
-                      <span className="info-label">{id === 'esfcex' ? 'Limite etário — confirmar edital' : 'Carga Horária de Trabalho'}</span>
-                      <span className="info-value">{id === 'esfcex' ? cargoSel.limiteEtario : '40h semanais'}</span>
-                    </div>
-                    <div className="info-row">
-                      <span className="info-label">{id === 'esfcex' ? 'Calendário' : 'Situação do Edital'}</span>
-                      <span className="info-value" style={{ color: 'var(--status-warning)' }}>{cfg.status}</span>
-                    </div>
-                  </div>
+              {id === 'esfcex' && (
+                <div className="panel study-area-panel">
+                  <label className="study-area-select">
+                    <span className="panel-title">Área de preparação</span>
+                    <select className="select-control" value={cargoSel.id} disabled={Boolean(timerSession.startedAt) || elapsedTimerMs > 0} onChange={e => setCargoSel(cfg.cargos.find(c => c.id === e.target.value))}>
+                      {cfg.cargos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                    </select>
+                  </label>
                 </div>
-              </div>
+              )}
             </>
           )}
 
@@ -652,6 +906,7 @@ function PainelConcurso({ id, onBack }) {
                 </div>
                 <span className="badge badge-blue">{id === 'esfcex' && totalMeta === 0 ? 'METAS POR ÁREA' : `META PLANEJADA: ${totalMeta}H`}</span>
               </div>
+              {renderStudyTimer()}
               <div className="study-notice">
                 {id === 'prf'
                   ? <><strong>Base de preparação:</strong> matérias e metas são editáveis e servem como planejamento inicial de 120h; não representam o conteúdo oficial de um novo edital. A PRF informa ensino médio completo para o cargo de Agente Administrativo. Confirme os requisitos e o programa no edital vigente.</>
@@ -697,9 +952,9 @@ function PainelConcurso({ id, onBack }) {
                                 value={d.meta}
                                 onChange={e => updateMeta(d.cod, e.target.value)}
                               />
-                              <span>h · registradas {d.feitas}h</span>
+                              <span>h · estudadas {formatStudyHours(d.feitas)}</span>
                             </div>
-                          : <span>meta {d.meta}h · registradas {d.feitas}h</span>}
+                          : <span>meta {d.meta}h · estudadas {formatStudyHours(d.feitas)}</span>}
                       </div>
                       <div className="progress-container">
                         <div className="progress-bar" style={{ width: `${pct}%`, background: materiaConcluida ? 'var(--status-success)' : 'var(--brand-blue)' }} />
@@ -719,10 +974,7 @@ function PainelConcurso({ id, onBack }) {
                       </div>
                       <div className="study-hours">
                         <span>Horas estudadas</span>
-                        <div>
-                          <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(d.cod, -1)} disabled={d.feitas === 0}>−1h</button>
-                          <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(d.cod, 1)} disabled={d.feitas === d.meta}>+1h</button>
-                        </div>
+                        <strong>{formatStudyHours(d.feitas)}</strong>
                       </div>
                     </article>
                   );
@@ -733,6 +985,7 @@ function PainelConcurso({ id, onBack }) {
 
           {activeTab === 'trilha' && !hasStudyChecklist && (
             <div className="panel">
+              {renderStudyTimer()}
               <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="panel-title">Acompanhamento por Disciplina</h3>
                 <span className="badge badge-blue">META TOTAL: {totalMeta}h</span>
@@ -744,30 +997,27 @@ function PainelConcurso({ id, onBack }) {
                       <th>CÓD.</th>
                       <th>DISCIPLINA</th>
                       <th style={{ width: '38%' }}>PROGRESSO</th>
-                      <th style={{ textAlign: 'center' }}>REGISTRAR</th>
+                      <th style={{ textAlign: 'center' }}>HORAS ESTUDADAS</th>
                       <th>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {disciplinasAtivas.map(d => {
-                      const pct = d.meta > 0 ? (d.feitas / d.meta) * 100 : 0;
+                      const pct = d.meta > 0 ? Math.min(100, (d.feitas / d.meta) * 100) : 0;
                       return (
                         <tr key={d.cod}>
                           <td style={{ fontWeight: 700, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{d.cod}</td>
                           <td style={{ color: '#f1f5f9' }}>{d.nome}</td>
                           <td>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 5 }}>
-                              <span>{d.feitas}h executadas</span>
+                              <span>{formatStudyHours(d.feitas)} executadas</span>
                               <span>meta {d.meta}h</span>
                             </div>
                             <div className="progress-container">
                               <div className="progress-bar" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--status-success)' : 'var(--brand-blue)' }} />
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <button className="ctrl-btn ctrl-btn-minus" onClick={() => updateHoras(d.cod, -1)}>−1h</button>
-                            <button className="ctrl-btn ctrl-btn-plus" onClick={() => updateHoras(d.cod, 1)}>+1h</button>
-                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{formatStudyHours(d.feitas)}</td>
                           <td>
                             {pct >= 100
                               ? <span className="badge badge-green">CONCLUÍDO</span>
