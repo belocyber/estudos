@@ -1,4 +1,15 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  buildLearningSummary,
+  getContestStorageScope,
+  getStudyDateKey,
+  HEARTBEAT_INTERVAL_MS,
+  HEARTBEAT_STALE_MS,
+  loadTimerSession,
+  readStudyLog,
+  recordStudyInterval,
+  recoverTimerCheckpoint,
+} from './studyData.js';
 import './index.css';
 
 const INITIAL_NOW = Date.now();
@@ -360,7 +371,25 @@ export default function App() {
   const [startStudyOnOpen, setStartStudyOnOpen] = useState(null);
 
   const startStudy = id => {
-    setStartStudyOnOpen(Date.now());
+    const now = Date.now();
+    const contest = concursosConfig[id];
+    const timer = loadTimerSession(window.localStorage, {
+      contestId: id,
+      subjectCode: contest.disciplinas[0]?.cod || '',
+      initialDisciplines: contest.disciplinas,
+      now,
+    });
+    if (!timer.startedAt) {
+      const scope = getContestStorageScope(id);
+      window.localStorage.setItem(`${scope}:timer`, JSON.stringify({
+        ...timer,
+        cod: timer.cod || contest.disciplinas[0]?.cod || '',
+        startedAt: now,
+        lastHeartbeatAt: now,
+        focusId: timer.focusId || `${id}-${now}-${Math.random().toString(36).slice(2)}`,
+      }));
+    }
+    setStartStudyOnOpen(now);
     setSelected(id);
   };
 
@@ -379,37 +408,347 @@ export default function App() {
   );
 }
 
+const learningChartColors = ['#43c59e', '#4da3e8', '#e5ad48', '#df7474', '#a4a2ed'];
+
+function LearningRadarChart({ contests, onOpenContest }) {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const size = 240;
+  const center = size / 2;
+  const radius = 72;
+  const maxHours = Math.max(...contests.map(contest => contest.hours), 0);
+  const pointsFor = level => contests.map((contest, index) => {
+    const angle = (Math.PI * 2 * index) / contests.length - Math.PI / 2;
+    const value = maxHours ? (contest.hours / maxHours) * level : 0;
+    return { x: center + Math.cos(angle) * radius * value / 100, y: center + Math.sin(angle) * radius * value / 100 };
+  });
+  const polygon = points => points.map(point => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+  const values = pointsFor(100);
+
+  return (
+    <section className="panel learning-chart-panel">
+      <header className="learning-panel-heading">
+        <div>
+          <h2 className="panel-title">Radar por concurso</h2>
+          <p>Comparação relativa ao concurso com mais horas.</p>
+        </div>
+      </header>
+      <div className="learning-radar-layout">
+        <svg className="learning-radar-svg" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Radar comparando horas estudadas por concurso">
+          {[25, 50, 75, 100].map(level => (
+            <polygon key={level} points={polygon(pointsFor(level))} className="learning-radar-grid" />
+          ))}
+          {contests.map((contest, index) => {
+            const angle = (Math.PI * 2 * index) / contests.length - Math.PI / 2;
+            const endX = center + Math.cos(angle) * radius;
+            const endY = center + Math.sin(angle) * radius;
+            return <line key={contest.id} x1={center} y1={center} x2={endX} y2={endY} className="learning-radar-axis" />;
+          })}
+          {maxHours > 0 && <polygon points={polygon(values)} className="learning-radar-area" />}
+          {contests.map((contest, index) => {
+            const point = values[index];
+            return (
+              <circle
+                key={contest.id}
+                cx={point.x}
+                cy={point.y}
+                r={hoveredIndex === index ? 6 : 4}
+                className="learning-radar-point"
+                style={{ '--chart-color': learningChartColors[index % learningChartColors.length] }}
+                tabIndex="0"
+                role="button"
+                aria-label={`${contest.title}: ${formatStudyHours(contest.hours)}`}
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                onFocus={() => setHoveredIndex(index)}
+                onBlur={() => setHoveredIndex(null)}
+                onClick={() => onOpenContest(contest.id)}
+              />
+            );
+          })}
+        </svg>
+        <div className="learning-radar-legend">
+          {contests.map((contest, index) => {
+            const relative = maxHours ? Math.round(contest.hours / maxHours * 100) : 0;
+            return (
+              <button className={hoveredIndex === index ? 'active' : ''} key={contest.id} onMouseEnter={() => setHoveredIndex(index)} onMouseLeave={() => setHoveredIndex(null)} onClick={() => onOpenContest(contest.id)}>
+                <i style={{ '--chart-color': learningChartColors[index % learningChartColors.length] }} />
+                <span>{contest.title}</span>
+                <strong>{formatStudyHours(contest.hours)}</strong>
+                <small>{relative}%</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {!maxHours && <p className="learning-chart-empty">As comparações aparecem após registrar estudos.</p>}
+    </section>
+  );
+}
+
+function LearningDonutChart({ contests, totalHours, onOpenContest }) {
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const radius = 72;
+  const circumference = 2 * Math.PI * radius;
+  const segments = contests.reduce((result, contest, index) => {
+    const share = totalHours ? contest.hours / totalHours : 0;
+    const length = share * circumference;
+    const previousOffset = result.length ? result[result.length - 1].offset + result[result.length - 1].length : 0;
+    if (length > 0) result.push({ ...contest, index, share, length, offset: previousOffset });
+    return result;
+  }, []);
+  const selected = hoveredIndex === null ? null : segments.find(segment => segment.index === hoveredIndex);
+
+  return (
+    <section className="panel learning-chart-panel">
+      <header className="learning-panel-heading">
+        <div>
+          <h2 className="panel-title">Rosca de distribuição</h2>
+          <p>Participação de cada concurso na carga acumulada.</p>
+        </div>
+      </header>
+      <div className="learning-donut-layout">
+        <div className="learning-donut-wrap">
+          <svg className="learning-donut-svg" viewBox="0 0 180 180" role="img" aria-label="Distribuição das horas acumuladas entre concursos">
+            <circle cx="90" cy="90" r={radius} className="learning-donut-track" />
+            {segments.map(segment => (
+              <circle
+                key={segment.id}
+                cx="90"
+                cy="90"
+                r={radius}
+                className={`learning-donut-segment${hoveredIndex === segment.index ? ' active' : ''}`}
+                style={{
+                  '--chart-color': learningChartColors[segment.index % learningChartColors.length],
+                  strokeDasharray: `${segment.length} ${circumference - segment.length}`,
+                  strokeDashoffset: -segment.offset,
+                }}
+                tabIndex="0"
+                role="button"
+                aria-label={`${segment.title}: ${Math.round(segment.share * 100)}%`}
+                onMouseEnter={() => setHoveredIndex(segment.index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                onFocus={() => setHoveredIndex(segment.index)}
+                onBlur={() => setHoveredIndex(null)}
+                onClick={() => onOpenContest(segment.id)}
+              />
+            ))}
+          </svg>
+          <div className="learning-donut-center" aria-live="polite">
+            <strong>{selected ? `${Math.round(selected.share * 100)}%` : formatStudyHours(totalHours)}</strong>
+            <span>{selected ? selected.title : 'TOTAL'}</span>
+          </div>
+        </div>
+        <div className="learning-donut-legend">
+          {contests.map((contest, index) => {
+            const share = totalHours ? contest.hours / totalHours * 100 : 0;
+            return (
+              <button className={hoveredIndex === index ? 'active' : ''} key={contest.id} onMouseEnter={() => setHoveredIndex(index)} onMouseLeave={() => setHoveredIndex(null)} onClick={() => onOpenContest(contest.id)}>
+                <i style={{ '--chart-color': learningChartColors[index % learningChartColors.length] }} />
+                <span>{contest.title}</span>
+                <strong>{Math.round(share)}%</strong>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {!totalHours && <p className="learning-chart-empty">A distribuição será calculada conforme as sessões forem salvas.</p>}
+    </section>
+  );
+}
+
+function CerebroAprendizagem({ summary, onOpenContest }) {
+  const maxWeekHours = Math.max(...summary.week.map(day => day.hours), 0.25);
+  const subjects = summary.contests.flatMap(contest => contest.subjects.map(subject => ({
+    ...subject,
+    contestId: contest.id,
+    contestTitle: contest.title,
+  }))).sort((a, b) => b.hours - a.hours).slice(0, 8);
+
+  return (
+    <section className="learning-dashboard">
+      <header className="learning-dashboard-header">
+        <div>
+          <span className="learning-eyebrow">DADOS DOS SEUS CRONÔMETROS</span>
+          <h1>Cérebro de aprendizagem</h1>
+          <p>Um retrato geral do seu ritmo, constância e distribuição de estudo.</p>
+        </div>
+        <span className="learning-live-status"><i /> DADOS LOCAIS ATUALIZADOS</span>
+      </header>
+
+      {summary.legacyHours > 0 && (
+        <div className="learning-data-note">
+          <strong>Histórico preservado:</strong> {formatStudyHours(summary.legacyHours)} de estudos anteriores foram mantidas no total, mas não possuem datas detalhadas. Os gráficos mostram apenas sessões registradas pelo cronômetro.
+        </div>
+      )}
+
+      <div className="grid-4 learning-metrics">
+        <article className="metric-card">
+          <span className="metric-label">Carga acumulada</span>
+          <strong className="metric-value learning-metric-blue">{formatStudyHours(summary.totalHours)}</strong>
+          <span className="metric-detail">Histórico preservado + cronômetro</span>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Cronometradas</span>
+          <strong className="metric-value learning-metric-green">{formatStudyHours(summary.recordedHours)}</strong>
+          <span className="metric-detail">Sessões com data e matéria</span>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Dias estudados</span>
+          <strong className="metric-value">{summary.studyDays}</strong>
+          <span className="metric-detail">{summary.studyDaysThisWeek} nos últimos 7 dias</span>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Sequência atual</span>
+          <strong className="metric-value learning-metric-amber">{summary.currentStreak}</strong>
+          <span className="metric-detail">Dias consecutivos com registro</span>
+        </article>
+      </div>
+
+      <div className="learning-charts-grid">
+        <section className="panel learning-chart-panel learning-week-panel">
+          <header className="learning-panel-heading">
+            <div>
+              <h2 className="panel-title">Ritmo semanal</h2>
+              <p>Horas registradas em cada dia, nos últimos sete dias.</p>
+            </div>
+            <span className="learning-chart-total">{formatStudyHours(summary.week.reduce((total, day) => total + day.hours, 0))}</span>
+          </header>
+          <div className="learning-week-chart" role="img" aria-label="Horas cronometradas por dia nos últimos sete dias">
+            {summary.week.map(day => {
+              const height = day.hours ? Math.max(8, Math.round(day.hours / maxWeekHours * 100)) : 0;
+              return (
+                <div className="learning-week-column" key={day.dateKey} title={`${day.day} · ${formatStudyHours(day.hours)}`}>
+                  <span className="learning-week-value">{day.hours ? formatStudyHours(day.hours) : '—'}</span>
+                  <div className="learning-week-track">
+                    <div className={`learning-week-bar${day.hours ? ' has-hours' : ''}`} style={{ height: `${height}%` }} />
+                  </div>
+                  <span className="learning-week-label">{day.label}</span>
+                  <span className="learning-week-date">{day.day}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <LearningRadarChart contests={summary.contests} onOpenContest={onOpenContest} />
+        <LearningDonutChart contests={summary.contests} totalHours={summary.totalHours} onOpenContest={onOpenContest} />
+      </div>
+
+      <div className="learning-dashboard-grid">
+        <section className="panel learning-contests-panel">
+          <header className="learning-panel-heading">
+            <div>
+              <h2 className="panel-title">Por concurso</h2>
+              <p>Carga acumulada por painel.</p>
+            </div>
+          </header>
+          <div className="learning-contest-list">
+            {summary.contests.map(contest => {
+              const width = summary.totalHours ? Math.min(100, contest.hours / summary.totalHours * 100) : 0;
+              return (
+                <button className="learning-contest-row" key={contest.id} onClick={() => onOpenContest(contest.id)}>
+                  <span className="learning-contest-name">{contest.title}</span>
+                  <span className="learning-contest-hours">{formatStudyHours(contest.hours)}</span>
+                  <span className="learning-contest-track"><i style={{ width: `${width}%` }} /></span>
+                  <span className="learning-contest-detail">{contest.days} {contest.days === 1 ? 'dia' : 'dias'} · {contest.focusCount} {contest.focusCount === 1 ? 'sessão' : 'sessões'}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="panel learning-subject-panel">
+          <header className="learning-panel-heading">
+            <div>
+              <h2 className="panel-title">Matérias com mais tempo</h2>
+              <p>Somente horas associadas a uma matéria.</p>
+            </div>
+          </header>
+          {subjects.length ? (
+            <div className="learning-subject-list">
+              {subjects.map(subject => (
+                <button className="learning-subject-row" key={`${subject.contestId}-${subject.code}`} onClick={() => onOpenContest(subject.contestId)}>
+                  <span className="learning-subject-code">{subject.code}</span>
+                  <span className="learning-subject-name"><strong>{subject.name}</strong><small>{subject.contestTitle}</small></span>
+                  <span className="learning-subject-hours">{formatStudyHours(subject.hours)}</span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="learning-empty-state">As matérias aparecerão aqui conforme você registrar sessões no cronômetro.</p>}
+        </section>
+
+        <section className="panel learning-activity-panel">
+          <header className="learning-panel-heading">
+            <div>
+              <h2 className="panel-title">Sessões recentes</h2>
+              <p>{summary.focusCount} sessões registradas no total.</p>
+            </div>
+          </header>
+          {summary.recentSessions.length ? (
+            <div className="learning-activity-list">
+              {summary.recentSessions.map(session => (
+                <button className="learning-activity-row" key={session.id} onClick={() => onOpenContest(session.contestId)}>
+                  <span className="learning-activity-date">{new Date(session.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                  <span className="learning-activity-main"><strong>{session.contestTitle}</strong><small>{session.subjectCode || 'Matéria não identificada'}</small></span>
+                  <span className="learning-activity-time">{formatStudyHours(session.durationMs / 3600000)}</span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="learning-empty-state">Nenhuma sessão foi registrada pelo cronômetro ainda.</p>}
+        </section>
+      </div>
+    </section>
+  );
+}
+
 // ─── HUB INICIAL ─────────────────────────────────────────────────────────────
 function HubInicial({ onSelect, onStartStudy }) {
+  const [activeHubView, setActiveHubView] = useState('concursos');
+  const [summaryNow, setSummaryNow] = useState(INITIAL_NOW);
+  useEffect(() => {
+    const interval = window.setInterval(() => setSummaryNow(Date.now()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const learningSummary = useMemo(
+    () => buildLearningSummary(window.localStorage, concursosConfig, summaryNow),
+    [summaryNow],
+  );
   const concursosOrdenados = Object.entries(concursosConfig)
     .map(([id, c], order) => {
-      const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
+      const storageScope = getContestStorageScope(id);
       const selectedCargoId = readSavedState(`${storageScope}:cargo`, c.cargoPadrao);
       const selectedCargo = c.cargos.find(cargo => cargo.id === selectedCargoId) || c.cargos[0];
       const disciplinas = readSavedState(`${storageScope}:disciplinas`, c.disciplinas)
         .filter(d => !d.cargoId || d.cargoId === selectedCargoId);
       const metaTotal = disciplinas.reduce((a, d) => a + d.meta, 0);
-      const feitasTotal = disciplinas.reduce((a, d) => a + d.feitas, 0);
+      const feitasTotal = learningSummary.contests.find(contest => contest.id === id)?.hours || 0;
       const pct = metaTotal > 0 ? Math.min(100, Math.round((feitasTotal / metaTotal) * 100)) : 0;
       return { id, c, order, selectedCargo, metaTotal, feitasTotal, pct };
     })
     .sort((a, b) => b.feitasTotal - a.feitasTotal || a.order - b.order);
   const focoPrincipal = concursosOrdenados[0];
   const todayKey = getStudyDateKey(new Date());
-  const studiedToday = concursosOrdenados.some(({ id }) => {
-    const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
-    const studyDays = readSavedState(`${storageScope}:study-days`, []);
-    const timer = readSavedState(`${storageScope}:timer`, null);
-    return studyDays.includes(todayKey) || (timer?.startedAt && getStudyDateKey(new Date(timer.startedAt)) <= todayKey);
-  });
+  const studiedToday = learningSummary.week.some(day => day.dateKey === todayKey && day.studied)
+    || concursosOrdenados.some(({ id }) => {
+      const timer = readSavedState(`${getContestStorageScope(id)}:timer`, null);
+      return Boolean(timer?.startedAt && getStudyDateKey(new Date(timer.startedAt)) === todayKey);
+    });
 
   return (
     <div className="hub-wrapper">
       <header className="hub-topbar">
         <span className="hub-title">Central Tática de Concursos</span>
+        <nav className="hub-view-tabs" aria-label="Seções principais">
+          <button className={activeHubView === 'concursos' ? 'active' : ''} onClick={() => setActiveHubView('concursos')}>Concursos</button>
+          <button className={activeHubView === 'cerebro' ? 'active' : ''} onClick={() => setActiveHubView('cerebro')}>Cérebro de aprendizagem</button>
+        </nav>
       </header>
 
       <div className="hub-content">
+        {activeHubView === 'cerebro' ? (
+          <CerebroAprendizagem summary={learningSummary} onOpenContest={onSelect} />
+        ) : <>
         <section className="hub-study-overview">
           <div className="hub-study-intro">
             <h1>Seu acompanhamento de estudos</h1>
@@ -511,6 +850,7 @@ function HubInicial({ onSelect, onStartStudy }) {
             );
           })}
         </div>
+        </>}
       </div>
     </div>
   );
@@ -527,7 +867,9 @@ function readSavedState(key, fallback) {
 }
 
 function formatStudyHours(hours) {
-  const totalMinutes = Math.round(hours * 60);
+  const totalSeconds = Math.round(hours * 3600);
+  if (totalSeconds > 0 && totalSeconds < 60) return `${totalSeconds}s`;
+  const totalMinutes = Math.floor(totalSeconds / 60);
   const fullHours = Math.floor(totalMinutes / 60);
   const remainingMinutes = totalMinutes % 60;
   return remainingMinutes ? `${fullHours}h ${remainingMinutes}min` : `${fullHours}h`;
@@ -539,13 +881,6 @@ function formatTimer(milliseconds) {
   const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
   const seconds = String(totalSeconds % 60).padStart(2, '0');
   return `${hours}:${minutes}:${seconds}`;
-}
-
-function getStudyDateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 function getStudyDateKeys(startedAt, endedAt) {
@@ -560,22 +895,23 @@ function getStudyDateKeys(startedAt, endedAt) {
 
 function PainelConcurso({ id, onBack, autoStartStudy = false }) {
   const cfg = concursosConfig[id];
-  const storageScope = `painel-concursos:${id}${['prf', 'atamf', 'civil', 'esfcex'].includes(id) ? ':v2' : ''}`;
+  const storageScope = getContestStorageScope(id);
   const hasStudyChecklist = ['abin', 'prf', 'atamf', 'civil', 'esfcex'].includes(id);
   const [activeTab, setActiveTab] = useState(autoStartStudy ? 'trilha' : 'visao');
   const contentRef = useRef(null);
-  const autoStartHandled = useRef(false);
   const [cargoSel, setCargoSel] = useState(() => {
     const selectedCargoId = readSavedState(`${storageScope}:cargo`, cfg.cargoPadrao);
     return cfg.cargos.find(c => c.id === selectedCargoId) || cfg.cargos[0];
   });
   const [disciplinas, setDisciplinas] = useState(() => readSavedState(`${storageScope}:disciplinas`, cfg.disciplinas.map(d => ({ ...d }))));
-  const [timerSession, setTimerSession] = useState(() => readSavedState(`${storageScope}:timer`, {
-    cod: cfg.disciplinas[0]?.cod || '',
-    elapsedMs: 0,
-    startedAt: null,
+  const [timerSession, setTimerSession] = useState(() => loadTimerSession(window.localStorage, {
+    contestId: id,
+    subjectCode: cfg.disciplinas[0]?.cod || '',
+    initialDisciplines: cfg.disciplinas,
   }));
-  const [timerNow, setTimerNow] = useState(timerSession.startedAt || autoStartStudy || INITIAL_NOW);
+  const [timerNow, setTimerNow] = useState(timerSession.startedAt || INITIAL_NOW);
+  const [learningSummaryNow, setLearningSummaryNow] = useState(timerSession.startedAt || INITIAL_NOW);
+  const [studySaveError, setStudySaveError] = useState(false);
   const [studyDays, setStudyDays] = useState(() => readSavedState(`${storageScope}:study-days`, []));
   const [trackingStart] = useState(() => readSavedState(`${storageScope}:tracking-start`, getStudyDateKey(new Date(INITIAL_NOW))));
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date(INITIAL_NOW).getFullYear(), new Date(INITIAL_NOW).getMonth(), 1));
@@ -583,69 +919,111 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
   const [etapasConcurso, setEtapasConcurso] = useState(() => readSavedState(`${storageScope}:etapas`, id === 'civil' ? etapasConcursoCIVIL : id === 'esfcex' ? etapasConcursoESFCEX : []));
   const disciplinasAtivas = id === 'esfcex' ? disciplinas.filter(d => !d.cargoId || d.cargoId === cargoSel.id) : disciplinas;
 
-  useEffect(() => {
-    const interval = window.setInterval(() => setTimerNow(Date.now()), timerSession.startedAt ? 1000 : 60000);
-    return () => window.clearInterval(interval);
-  }, [timerSession.startedAt]);
-
   const saveTimerSession = useCallback(nextSession => {
     setTimerSession(nextSession);
+    setLearningSummaryNow(Date.now());
     try {
       localStorage.setItem(`${storageScope}:timer`, JSON.stringify(nextSession));
+      setStudySaveError(false);
     } catch {
-      return;
+      setStudySaveError(true);
     }
   }, [storageScope]);
 
   useEffect(() => {
-    if (!autoStartStudy || autoStartHandled.current || timerSession.startedAt) return;
-    autoStartHandled.current = true;
-    saveTimerSession({ ...timerSession, cod: timerSession.cod || disciplinasAtivas[0]?.cod || '', startedAt: autoStartStudy });
-  }, [autoStartStudy, timerSession, disciplinasAtivas, saveTimerSession, storageScope]);
+    const interval = window.setInterval(() => setLearningSummaryNow(Date.now()), 15000);
+    return () => window.clearInterval(interval);
+  }, []);
 
-  const elapsedTimerMs = timerSession.elapsedMs + (timerSession.startedAt ? Math.max(0, timerNow - timerSession.startedAt) : 0);
-  const timerSubjectCod = disciplinasAtivas.some(d => d.cod === timerSession.cod)
-    ? timerSession.cod
-    : disciplinasAtivas[0]?.cod || '';
-  const recordStudyPeriod = (startedAt, endedAt) => {
-    if (!startedAt || endedAt <= startedAt) return;
+  const recordStudyPeriod = useCallback((startedAt, endedAt, focusId, subjectCode) => {
+    if (!startedAt || endedAt <= startedAt) return true;
+    const savedLog = recordStudyInterval(window.localStorage, { contestId: id, subjectCode, focusId, startedAt, endedAt });
+    if (!savedLog) {
+      setStudySaveError(true);
+      return false;
+    }
     const nextDays = [...new Set([...studyDays, ...getStudyDateKeys(startedAt, endedAt)])].sort();
     setStudyDays(nextDays);
     try {
       localStorage.setItem(`${storageScope}:study-days`, JSON.stringify(nextDays));
     } catch {
-      return;
+      setStudySaveError(true);
     }
-  };
+    return true;
+  }, [id, storageScope, studyDays]);
 
+  const checkpointTimer = useCallback((now = Date.now(), pause = false) => {
+    if (!timerSession.startedAt) return timerSession;
+    if (timerSession.lastHeartbeatAt && now - timerSession.lastHeartbeatAt > HEARTBEAT_STALE_MS) {
+      const recovery = recoverTimerCheckpoint(timerSession, now);
+      if (recovery.interruptedInterval) {
+        const saved = recordStudyPeriod(recovery.interruptedInterval.startedAt, recovery.interruptedInterval.endedAt, timerSession.focusId, timerSession.cod);
+        if (!saved) return timerSession;
+      }
+      saveTimerSession(recovery.timer);
+      return recovery.timer;
+    }
+
+    const elapsedMs = Math.max(0, now - timerSession.startedAt);
+    if (elapsedMs > 0 && !recordStudyPeriod(timerSession.startedAt, now, timerSession.focusId, timerSession.cod)) return timerSession;
+    const nextSession = {
+      ...timerSession,
+      elapsedMs: timerSession.elapsedMs + elapsedMs,
+      creditedMs: (timerSession.creditedMs || 0) + elapsedMs,
+      startedAt: pause ? null : now,
+      lastHeartbeatAt: pause ? null : now,
+    };
+    setTimerNow(now);
+    saveTimerSession(nextSession);
+    return nextSession;
+  }, [timerSession, recordStudyPeriod, saveTimerSession]);
+
+  useEffect(() => {
+    if (!timerSession.startedAt) {
+      const interval = window.setInterval(() => setTimerNow(Date.now()), 60000);
+      return () => window.clearInterval(interval);
+    }
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      setTimerNow(now);
+      if (now - timerSession.startedAt >= HEARTBEAT_INTERVAL_MS) checkpointTimer(now);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [timerSession.startedAt, checkpointTimer]);
+
+  const elapsedTimerMs = timerSession.elapsedMs + (timerSession.startedAt ? Math.max(0, timerNow - timerSession.startedAt) : 0);
+  const timerSubjectCod = disciplinasAtivas.some(d => d.cod === timerSession.cod)
+    ? timerSession.cod
+    : disciplinasAtivas[0]?.cod || '';
   const toggleTimer = () => {
     if (timerSession.startedAt) {
-      const now = Date.now();
-      const elapsedMs = timerSession.elapsedMs + Math.max(0, now - timerSession.startedAt);
-      recordStudyPeriod(timerSession.startedAt, now);
-      saveTimerSession({ ...timerSession, cod: timerSubjectCod, elapsedMs, startedAt: null });
+      checkpointTimer(Date.now(), true);
     } else {
       const now = Date.now();
       setTimerNow(now);
-      saveTimerSession({ ...timerSession, cod: timerSubjectCod, startedAt: now });
+      saveTimerSession({
+        ...timerSession,
+        cod: timerSubjectCod,
+        startedAt: now,
+        lastHeartbeatAt: now,
+        focusId: timerSession.focusId || `${id}-${now}-${Math.random().toString(36).slice(2)}`,
+      });
     }
   };
 
   const finishTimer = () => {
-    const now = Date.now();
-    const elapsedMs = timerSession.elapsedMs + (timerSession.startedAt ? Math.max(0, now - timerSession.startedAt) : 0);
-    if (elapsedMs > 0) {
-      const loggedHours = elapsedMs / 3600000;
-      setDisciplinas(ds => ds.map(d => d.cod === timerSession.cod ? { ...d, feitas: d.feitas + loggedHours } : d));
-    }
-    if (timerSession.startedAt) recordStudyPeriod(timerSession.startedAt, now);
-    saveTimerSession({ ...timerSession, cod: timerSubjectCod, elapsedMs: 0, startedAt: null });
+    const current = timerSession.startedAt ? checkpointTimer(Date.now(), true) : timerSession;
+    if (current.startedAt) return;
+    saveTimerSession({ ...current, cod: timerSubjectCod, elapsedMs: 0, creditedMs: 0, startedAt: null, lastHeartbeatAt: null, focusId: null });
   };
 
   const today = new Date(timerNow);
+  const ledgerStudyDays = readStudyLog(window.localStorage)
+    .filter(entry => entry.contestId === id)
+    .map(entry => entry.studyDate);
   const visibleStudyDays = timerSession.startedAt
-    ? [...new Set([...studyDays, ...getStudyDateKeys(timerSession.startedAt, timerNow + 1)])]
-    : studyDays;
+    ? [...new Set([...studyDays, ...ledgerStudyDays, ...getStudyDateKeys(timerSession.startedAt, timerNow + 1)])]
+    : [...new Set([...studyDays, ...ledgerStudyDays])];
   const studyDaySet = new Set(visibleStudyDays);
   const studyDaysLastSeven = Array.from({ length: 7 }, (_, offset) => {
     const date = new Date(today);
@@ -710,6 +1088,7 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
           Concluir e salvar
         </button>
       </div>
+      {studySaveError && <p className="study-save-error" role="alert">Não foi possível confirmar o salvamento desta sessão. O cronômetro continuará tentando.</p>}
     </div>
   );
 
@@ -754,8 +1133,15 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
       : d
   )));
 
+  const learningSummary = useMemo(
+    () => buildLearningSummary(window.localStorage, concursosConfig, learningSummaryNow),
+    [learningSummaryNow],
+  );
+  const contestLearning = learningSummary.contests.find(contest => contest.id === id);
+  const studyHoursByCode = new Map((contestLearning?.subjects || []).map(subject => [subject.code, subject.hours]));
+  const getSubjectStudyHours = code => studyHoursByCode.get(code) || 0;
   const totalMeta = disciplinasAtivas.reduce((a, d) => a + d.meta, 0);
-  const totalFeitas = disciplinasAtivas.reduce((a, d) => a + d.feitas, 0);
+  const totalFeitas = disciplinasAtivas.reduce((total, discipline) => total + getSubjectStudyHours(discipline.cod), 0);
   const pctHoras = totalMeta > 0 ? Math.min(100, Math.round((totalFeitas / totalMeta) * 100)) : 0;
   const etapasTotal = disciplinasAtivas.reduce((total, d) => total + (d.etapas?.length || 0), 0);
   const etapasConcluidas = disciplinasAtivas.reduce((total, d) => total + (d.etapas?.filter(e => e.concluida).length || 0), 0);
@@ -824,7 +1210,7 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
                 </div>
                 <div className="metric-card">
                   <span className="metric-label">Dias estudados</span>
-                  <span className="metric-value" style={{ color: 'var(--status-success)' }}>{studyDays.length}</span>
+                  <span className="metric-value" style={{ color: 'var(--status-success)' }}>{studyDaySet.size}</span>
                   <span className="metric-detail">Dias com sessão registrada</span>
                 </div>
                 <div className="metric-card">
@@ -952,9 +1338,9 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
                                 value={d.meta}
                                 onChange={e => updateMeta(d.cod, e.target.value)}
                               />
-                              <span>h · estudadas {formatStudyHours(d.feitas)}</span>
+                              <span>h · estudadas {formatStudyHours(getSubjectStudyHours(d.cod))}</span>
                             </div>
-                          : <span>meta {d.meta}h · estudadas {formatStudyHours(d.feitas)}</span>}
+                          : <span>meta {d.meta}h · estudadas {formatStudyHours(getSubjectStudyHours(d.cod))}</span>}
                       </div>
                       <div className="progress-container">
                         <div className="progress-bar" style={{ width: `${pct}%`, background: materiaConcluida ? 'var(--status-success)' : 'var(--brand-blue)' }} />
@@ -974,7 +1360,7 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
                       </div>
                       <div className="study-hours">
                         <span>Horas estudadas</span>
-                        <strong>{formatStudyHours(d.feitas)}</strong>
+                        <strong>{formatStudyHours(getSubjectStudyHours(d.cod))}</strong>
                       </div>
                     </article>
                   );
@@ -1003,21 +1389,22 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
                   </thead>
                   <tbody>
                     {disciplinasAtivas.map(d => {
-                      const pct = d.meta > 0 ? Math.min(100, (d.feitas / d.meta) * 100) : 0;
+                      const subjectHours = getSubjectStudyHours(d.cod);
+                      const pct = d.meta > 0 ? Math.min(100, (subjectHours / d.meta) * 100) : 0;
                       return (
                         <tr key={d.cod}>
                           <td style={{ fontWeight: 700, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{d.cod}</td>
                           <td style={{ color: '#f1f5f9' }}>{d.nome}</td>
                           <td>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 5 }}>
-                              <span>{formatStudyHours(d.feitas)} executadas</span>
+                              <span>{formatStudyHours(subjectHours)} executadas</span>
                               <span>meta {d.meta}h</span>
                             </div>
                             <div className="progress-container">
                               <div className="progress-bar" style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--status-success)' : 'var(--brand-blue)' }} />
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{formatStudyHours(d.feitas)}</td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{formatStudyHours(subjectHours)}</td>
                           <td>
                             {pct >= 100
                               ? <span className="badge badge-green">CONCLUÍDO</span>
