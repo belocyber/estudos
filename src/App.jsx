@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import {
   buildLearningSummary,
   getContestStorageScope,
@@ -10,6 +11,10 @@ import {
   recordStudyInterval,
   recoverTimerCheckpoint,
 } from './studyData.js';
+import { writeAppLocalValue } from './localData.js';
+import { createUsernameAccount, generateRecoveryCode, leaveUsernameAccount, recoverUsernameAccount, validateUsername } from './accountAccess.js';
+import { auth, authReady } from './firebaseClient.js';
+import { subscribeAccountSync } from './firebaseSync.js';
 import './index.css';
 
 const INITIAL_NOW = Date.now();
@@ -366,9 +371,169 @@ const concursosConfig = {
 };
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
+function AccessScreen({ onRecoveryPending }) {
+  const [username, setUsername] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recovering, setRecovering] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const submit = async event => {
+    event.preventDefault();
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!validateUsername(normalizedUsername)) {
+      setMessage('Use de 3 a 24 caracteres: letras, números, ponto, hífen ou sublinhado.');
+      return;
+    }
+    if (recovering && recoveryCode.replace(/[^a-z0-9]/gi, '').length < 24) {
+      setMessage('Confira o código de recuperação completo.');
+      return;
+    }
+
+    setBusy(true);
+    setMessage('');
+    try {
+      await authReady;
+      if (recovering) {
+        await recoverUsernameAccount(normalizedUsername, recoveryCode);
+        return;
+      }
+
+      const generatedCode = generateRecoveryCode();
+      onRecoveryPending({ username: normalizedUsername, code: generatedCode });
+      await createUsernameAccount(normalizedUsername, generatedCode);
+    } catch (error) {
+      onRecoveryPending(null);
+      if (error.code === 'auth/email-already-in-use') {
+        setMessage('Esse username já tem um perfil. Use a opção de código de recuperação.');
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        setMessage('Username ou código não conferem.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        setMessage('Ative o provedor Email/Senha no Firebase Authentication para habilitar a recuperação segura.');
+      } else {
+        setMessage('Não foi possível conectar ao Firebase. Verifique a conexão e tente novamente.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <main className="secure-access-screen">
+      <div className="secure-access-grid" />
+      <section className="secure-access-panel">
+        <div className="secure-access-mark" aria-hidden="true"><span>CT</span></div>
+        <span className="secure-access-classification">AMBIENTE PESSOAL · SINCRONIZAÇÃO ATIVA</span>
+        <h1>Central Tática</h1>
+        <p className="secure-access-subtitle">Acesse seu acompanhamento de estudos</p>
+
+        <form className="secure-access-form" onSubmit={submit}>
+          <label htmlFor="account-username">Username</label>
+          <input
+            id="account-username"
+            autoComplete="username"
+            maxLength={24}
+            value={username}
+            onChange={event => setUsername(event.target.value)}
+            placeholder="seu-username"
+            required
+          />
+          {recovering && <>
+            <label htmlFor="account-recovery-code">Código de recuperação</label>
+            <input
+              id="account-recovery-code"
+              autoComplete="one-time-code"
+              value={recoveryCode}
+              onChange={event => setRecoveryCode(event.target.value)}
+              placeholder="XXXX-XXXX-XXXX-XXXX..."
+              required
+            />
+          </>}
+          {message && <p className="secure-access-message" role="alert">{message}</p>}
+          <button className="secure-access-submit" type="submit" disabled={busy}>
+            {busy ? 'Conectando...' : recovering ? 'Recuperar e entrar' : 'Entrar'}
+            <span aria-hidden="true">↗</span>
+          </button>
+        </form>
+
+        <button className="secure-access-switch" onClick={() => { setRecovering(value => !value); setMessage(''); }}>
+          {recovering ? 'Primeiro acesso? Criar username' : 'Já tenho um código de recuperação'}
+        </button>
+        <p className="secure-access-footnote">Seus dados ficam vinculados ao seu perfil e sincronizados entre dispositivos.</p>
+      </section>
+    </main>
+  );
+}
+
+function RecoveryCodeScreen({ recovery, ready, onContinue }) {
+  const [copied, setCopied] = useState(false);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(recovery.code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <main className="secure-access-screen">
+      <div className="secure-access-grid" />
+      <section className="secure-access-panel recovery-panel">
+        <div className="secure-access-mark" aria-hidden="true"><span>CT</span></div>
+        <span className="secure-access-classification">CÓDIGO PESSOAL DE RECUPERAÇÃO</span>
+        <h1>Guarde este código</h1>
+        <p className="secure-access-subtitle">Ele é necessário para recuperar <strong>{recovery.username}</strong> em outro dispositivo.</p>
+        <output className="recovery-code">{recovery.code}</output>
+        <button className="secure-access-submit" onClick={copyCode}>{copied ? 'Código copiado' : 'Copiar código'}</button>
+        <p className="secure-access-message">Este código não pode ser consultado novamente. Sem ele, não será possível recuperar o perfil em outro aparelho.</p>
+        <button className="secure-access-confirm" onClick={onContinue} disabled={!ready}>Já guardei, entrar</button>
+        {!ready && <span className="secure-access-wait">Preparando perfil seguro...</span>}
+      </section>
+    </main>
+  );
+}
+
 export default function App() {
   const [selected, setSelected] = useState(null);
   const [startStudyOnOpen, setStartStudyOnOpen] = useState(null);
+  const [authResolved, setAuthResolved] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
+  const [recoveryPending, setRecoveryPending] = useState(null);
+  const [username, setUsername] = useState('');
+  const [cloudReady, setCloudReady] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState('connecting');
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    let disposed = false;
+    authReady.then(() => {
+      if (disposed) return;
+      unsubscribe = onAuthStateChanged(auth, user => {
+        setSessionUser(user);
+        setAuthResolved(true);
+        setCloudReady(false);
+      });
+    }).catch(() => setAuthResolved(true));
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionUser) return undefined;
+    const unsubscribe = subscribeAccountSync(
+      sessionUser,
+      recoveryPending?.username || username,
+      status => {
+        setCloudStatus(status);
+        if (['synced', 'offline', 'error'].includes(status)) setCloudReady(true);
+      },
+      setUsername,
+    );
+    return unsubscribe;
+  }, [sessionUser, username, recoveryPending?.username]);
 
   const startStudy = id => {
     const now = Date.now();
@@ -381,7 +546,7 @@ export default function App() {
     });
     if (!timer.startedAt) {
       const scope = getContestStorageScope(id);
-      window.localStorage.setItem(`${scope}:timer`, JSON.stringify({
+      writeAppLocalValue(window.localStorage, `${scope}:timer`, JSON.stringify({
         ...timer,
         cod: timer.cod || contest.disciplinas[0]?.cod || '',
         startedAt: now,
@@ -398,10 +563,24 @@ export default function App() {
     setStartStudyOnOpen(false);
   };
 
+  if (!authResolved) return <div className="secure-access-loading">Estabelecendo conexão segura...</div>;
+  if (recoveryPending) {
+    return <RecoveryCodeScreen recovery={recoveryPending} ready={Boolean(sessionUser && cloudReady)} onContinue={() => setRecoveryPending(null)} />;
+  }
+  if (!sessionUser) return <AccessScreen onRecoveryPending={setRecoveryPending} />;
+  if (!cloudReady) return <div className="secure-access-loading">Sincronizando seus dados de estudo...</div>;
+
+  const signOut = async () => {
+    await leaveUsernameAccount();
+    setSessionUser(null);
+    setUsername('');
+    setSelected(null);
+  };
+
   return (
     <div className="app-container">
       {!selected
-        ? <HubInicial onSelect={setSelected} onStartStudy={startStudy} />
+        ? <HubInicial onSelect={setSelected} onStartStudy={startStudy} username={username} cloudStatus={cloudStatus} onSignOut={signOut} />
         : <PainelConcurso id={selected} onBack={returnToHub} autoStartStudy={startStudyOnOpen} />
       }
     </div>
@@ -702,7 +881,7 @@ function CerebroAprendizagem({ summary, onOpenContest }) {
 }
 
 // ─── HUB INICIAL ─────────────────────────────────────────────────────────────
-function HubInicial({ onSelect, onStartStudy }) {
+function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut }) {
   const [activeHubView, setActiveHubView] = useState('concursos');
   const [summaryNow, setSummaryNow] = useState(INITIAL_NOW);
   useEffect(() => {
@@ -743,6 +922,11 @@ function HubInicial({ onSelect, onStartStudy }) {
           <button className={activeHubView === 'concursos' ? 'active' : ''} onClick={() => setActiveHubView('concursos')}>Concursos</button>
           <button className={activeHubView === 'cerebro' ? 'active' : ''} onClick={() => setActiveHubView('cerebro')}>Cérebro de aprendizagem</button>
         </nav>
+        <div className="hub-account-tools">
+          <span className={`hub-cloud-status hub-cloud-${cloudStatus}`}><i />{cloudStatus === 'synced' ? 'Sincronizado' : cloudStatus === 'saving' ? 'Salvando' : cloudStatus === 'offline' ? 'Offline' : cloudStatus === 'error' ? 'Falha ao sincronizar' : 'Conectando'}</span>
+          <span className="hub-account-name">{username || 'Perfil'}</span>
+          <button className="hub-signout" onClick={onSignOut} title="Sair do perfil">Sair</button>
+        </div>
       </header>
 
       <div className="hub-content">
@@ -866,6 +1050,17 @@ function readSavedState(key, fallback) {
   }
 }
 
+function readSavedDateString(key, fallback) {
+  const stored = localStorage.getItem(key);
+  if (!stored) return fallback;
+  try {
+    const value = JSON.parse(stored);
+    return typeof value === 'string' ? value : fallback;
+  } catch {
+    return /^\d{4}-\d{2}-\d{2}$/.test(stored) ? stored : fallback;
+  }
+}
+
 function formatStudyHours(hours) {
   const totalSeconds = Math.round(hours * 3600);
   if (totalSeconds > 0 && totalSeconds < 60) return `${totalSeconds}s`;
@@ -913,7 +1108,7 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
   const [learningSummaryNow, setLearningSummaryNow] = useState(timerSession.startedAt || INITIAL_NOW);
   const [studySaveError, setStudySaveError] = useState(false);
   const [studyDays, setStudyDays] = useState(() => readSavedState(`${storageScope}:study-days`, []));
-  const [trackingStart] = useState(() => readSavedState(`${storageScope}:tracking-start`, getStudyDateKey(new Date(INITIAL_NOW))));
+  const [trackingStart] = useState(() => readSavedDateString(`${storageScope}:tracking-start`, getStudyDateKey(new Date(INITIAL_NOW))));
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date(INITIAL_NOW).getFullYear(), new Date(INITIAL_NOW).getMonth(), 1));
   const [docs, setDocs] = useState(() => readSavedState(`${storageScope}:documentos`, cfg.documentos.map(d => ({ ...d }))));
   const [etapasConcurso, setEtapasConcurso] = useState(() => readSavedState(`${storageScope}:etapas`, id === 'civil' ? etapasConcursoCIVIL : id === 'esfcex' ? etapasConcursoESFCEX : []));
@@ -923,7 +1118,7 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
     setTimerSession(nextSession);
     setLearningSummaryNow(Date.now());
     try {
-      localStorage.setItem(`${storageScope}:timer`, JSON.stringify(nextSession));
+      writeAppLocalValue(localStorage, `${storageScope}:timer`, JSON.stringify(nextSession));
       setStudySaveError(false);
     } catch {
       setStudySaveError(true);
@@ -945,7 +1140,7 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
     const nextDays = [...new Set([...studyDays, ...getStudyDateKeys(startedAt, endedAt)])].sort();
     setStudyDays(nextDays);
     try {
-      localStorage.setItem(`${storageScope}:study-days`, JSON.stringify(nextDays));
+      writeAppLocalValue(localStorage, `${storageScope}:study-days`, JSON.stringify(nextDays));
     } catch {
       setStudySaveError(true);
     }
@@ -1094,12 +1289,12 @@ function PainelConcurso({ id, onBack, autoStartStudy = false }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(`${storageScope}:disciplinas`, JSON.stringify(disciplinas));
-      localStorage.setItem(`${storageScope}:documentos`, JSON.stringify(docs));
-      localStorage.setItem(`${storageScope}:etapas`, JSON.stringify(etapasConcurso));
-      localStorage.setItem(`${storageScope}:study-days`, JSON.stringify(studyDays));
-      localStorage.setItem(`${storageScope}:tracking-start`, trackingStart);
-      localStorage.setItem(`${storageScope}:cargo`, cargoSel.id);
+      writeAppLocalValue(localStorage, `${storageScope}:disciplinas`, JSON.stringify(disciplinas));
+      writeAppLocalValue(localStorage, `${storageScope}:documentos`, JSON.stringify(docs));
+      writeAppLocalValue(localStorage, `${storageScope}:etapas`, JSON.stringify(etapasConcurso));
+      writeAppLocalValue(localStorage, `${storageScope}:study-days`, JSON.stringify(studyDays));
+      writeAppLocalValue(localStorage, `${storageScope}:tracking-start`, JSON.stringify(trackingStart));
+      writeAppLocalValue(localStorage, `${storageScope}:cargo`, JSON.stringify(cargoSel.id));
     } catch {
       return;
     }

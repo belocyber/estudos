@@ -1,3 +1,5 @@
+import { writeAppLocalValue } from './localData.js';
+
 export const STUDY_LOG_KEY = 'painel-concursos:study-log:v1';
 export const HEARTBEAT_INTERVAL_MS = 5000;
 export const HEARTBEAT_STALE_MS = 15000;
@@ -34,7 +36,7 @@ export function getLegacyHours(storage, contestId, initialDisciplines) {
 
   const baseline = readLegacyHours(storage, contestId, initialDisciplines);
   try {
-    storage.setItem(key, JSON.stringify(baseline));
+    writeAppLocalValue(storage, key, JSON.stringify(baseline));
   } catch {
     return baseline;
   }
@@ -63,13 +65,13 @@ export function loadTimerSession(storage, { contestId, subjectCode, initialDisci
       const baseline = getLegacyHours(storage, contestId, initialDisciplines);
       baseline[timer.cod || subjectCode] = (Number(baseline[timer.cod || subjectCode]) || 0) + knownElapsedMs / 3600000;
       try {
-        storage.setItem(`${scope}:legacy-hours:v1`, JSON.stringify(baseline));
+        writeAppLocalValue(storage, `${scope}:legacy-hours:v1`, JSON.stringify(baseline));
       } catch {
         return emptySession;
       }
     }
     try {
-      storage.setItem(timerKey, JSON.stringify(emptySession));
+      writeAppLocalValue(storage, timerKey, JSON.stringify(emptySession));
     } catch {
       return emptySession;
     }
@@ -89,13 +91,13 @@ export function loadTimerSession(storage, { contestId, subjectCode, initialDisci
       .map(segment => segment.studyDate);
     const days = readStoredJson(storage, `${scope}:study-days`, []);
     try {
-      storage.setItem(`${scope}:study-days`, JSON.stringify([...new Set([...days, ...dateKeys])].sort()));
+      writeAppLocalValue(storage, `${scope}:study-days`, JSON.stringify([...new Set([...days, ...dateKeys])].sort()));
     } catch {
       return recovery.timer;
     }
   }
   try {
-    storage.setItem(timerKey, JSON.stringify(recovery.timer));
+    writeAppLocalValue(storage, timerKey, JSON.stringify(recovery.timer));
   } catch {
     return recovery.timer;
   }
@@ -172,7 +174,7 @@ export function recordStudyInterval(storage, { contestId, subjectCode, focusId, 
   }
   nextLog.sort((a, b) => a.startedAt - b.startedAt);
   try {
-    storage.setItem(STUDY_LOG_KEY, JSON.stringify(nextLog));
+    writeAppLocalValue(storage, STUDY_LOG_KEY, JSON.stringify(nextLog));
   } catch {
     return null;
   }
