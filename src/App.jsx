@@ -15,6 +15,7 @@ import { writeAppLocalValue } from './localData.js';
 import { createUsernameAccount, generateRecoveryCode, leaveUsernameAccount, recoverUsernameAccount, validateUsername } from './accountAccess.js';
 import { auth, authReady } from './firebaseClient.js';
 import { subscribeAccountSync } from './firebaseSync.js';
+import { publishRankingEntry, subscribeGlobalRanking } from './rankingSync.js';
 import './index.css';
 
 const INITIAL_NOW = Date.now();
@@ -535,6 +536,40 @@ export default function App() {
     return unsubscribe;
   }, [sessionUser, username, recoveryPending?.username]);
 
+  // ─── Publish to global ranking on login + after every study save ──────────
+  useEffect(() => {
+    if (!sessionUser || !username || !cloudReady) return;
+
+    let debounceTimer = null;
+
+    const publish = () => {
+      const summary = buildLearningSummary(window.localStorage, concursosConfig, Date.now());
+      // Only chronometer-recorded hours count — prevents cheating
+      publishRankingEntry(
+        sessionUser.uid,
+        username,
+        summary.recordedHours,
+        summary.currentStreak,
+        summary.studyDays,
+      ).catch(() => {});
+    };
+
+    // Publish immediately on login / sync ready
+    publish();
+
+    // Also re-publish (debounced) whenever local study data changes
+    const handleLocalChange = () => {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(publish, 2000);
+    };
+
+    window.addEventListener('panel-local-data-changed', handleLocalChange);
+    return () => {
+      window.clearTimeout(debounceTimer);
+      window.removeEventListener('panel-local-data-changed', handleLocalChange);
+    };
+  }, [sessionUser, username, cloudReady]);
+
   const startStudy = id => {
     const now = Date.now();
     const contest = concursosConfig[id];
@@ -580,7 +615,7 @@ export default function App() {
   return (
     <div className="app-container">
       {!selected
-        ? <HubInicial onSelect={setSelected} onStartStudy={startStudy} username={username} cloudStatus={cloudStatus} onSignOut={signOut} />
+        ? <HubInicial onSelect={setSelected} onStartStudy={startStudy} username={username} cloudStatus={cloudStatus} onSignOut={signOut} sessionUser={sessionUser} />
         : <PainelConcurso id={selected} onBack={returnToHub} autoStartStudy={startStudyOnOpen} />
       }
     </div>
@@ -880,8 +915,182 @@ function CerebroAprendizagem({ summary, onOpenContest }) {
   );
 }
 
+// ─── GLOBAL RANKING ───────────────────────────────────────────────────────────
+function formatStudyHoursShort(hours) {
+  const totalMinutes = Math.floor(hours * 60);
+  const fullHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  if (fullHours === 0) return `${remainingMinutes}min`;
+  return remainingMinutes ? `${fullHours}h ${remainingMinutes}min` : `${fullHours}h`;
+}
+
+function GlobalPodium({ entries, currentUserId }) {
+  const medals = ['🥇', '🥈', '🥉'];
+  return (
+    <div className="ranking-podium">
+      {[1, 0, 2].map(i => {
+        const entry = entries[i];
+        if (!entry) return null;
+        const isMe = entry.uid === currentUserId;
+        return (
+          <div key={entry.uid} className={`ranking-podium-slot ranking-podium-${i === 0 ? 'first' : i === 1 ? 'second' : 'third'}${isMe ? ' ranking-podium-me' : ''}`}>
+            <div className="ranking-podium-avatar">{entry.username.slice(0, 2).toUpperCase()}</div>
+            <span className="ranking-podium-medal">{medals[i]}</span>
+            <span className="ranking-podium-name">{entry.username}{isMe ? ' (você)' : ''}</span>
+            <span className="ranking-podium-hours">{formatStudyHoursShort(entry.totalHours)}</span>
+            <div className={`ranking-podium-base ranking-podium-base-pos-${i}`} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Top3RankingSummary({ currentUserId, onOpenRanking }) {
+  const [entries, setEntries] = useState([]);
+  useEffect(() => {
+    return subscribeGlobalRanking(setEntries);
+  }, []);
+  const top3 = entries.slice(0, 3);
+  if (top3.length === 0) return null;
+  return (
+    <section className="hub-study-overview" style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #333', marginBottom: '1.5rem', borderRadius: '0', background: 'transparent' }}>
+      <div className="hub-study-intro" style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: '1.1rem', color: '#fff', margin: 0 }}>Top 3 Global</h2>
+          <p style={{ margin: 0, marginTop: '2px', fontSize: '0.85rem' }}>Os maiores destaques da plataforma.</p>
+        </div>
+        <button className="hub-signout" onClick={onOpenRanking} style={{ margin: 0, fontSize: '0.8rem', padding: '4px 10px' }}>Ver ranking completo</button>
+      </div>
+      <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '-50px', marginTop: '-10px' }}>
+        <GlobalPodium entries={top3} currentUserId={currentUserId} />
+      </div>
+    </section>
+  );
+}
+
+function GlobalRanking({ currentUserId }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = subscribeGlobalRanking(data => {
+      setEntries(data);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  const sorted = [...entries].sort((a, b) => b.totalHours - a.totalHours || b.currentStreak - a.currentStreak);
+
+  const myRank = sorted.findIndex(e => e.uid === currentUserId);
+  const myEntry = sorted[myRank];
+  const maxHours = sorted[0]?.totalHours || 1;
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  return (
+    <div className="ranking-wrapper">
+      {/* Hero banner */}
+      <div className="ranking-hero">
+        <div className="ranking-hero-bg" aria-hidden="true">
+          <div className="ranking-hero-glow" />
+        </div>
+        <div className="ranking-hero-content">
+          <span className="ranking-eyebrow">COMPETIÇÃO GLOBAL</span>
+          <h1 className="ranking-title">Ranking de Estudos</h1>
+          <p className="ranking-subtitle">Compare seu desempenho com outros candidatos e mantenha a motivação em alta.</p>
+
+          {myEntry && (
+            <div className="ranking-my-position">
+              <div className="ranking-my-avatar" aria-hidden="true">
+                {myEntry.username.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="ranking-my-info">
+                <span className="ranking-my-label">Sua posição atual</span>
+                <strong className="ranking-my-rank">#{myRank + 1} — {myEntry.username}</strong>
+                <span className="ranking-my-stats">
+                  {formatStudyHoursShort(myEntry.totalHours)} · {myEntry.currentStreak} dias de sequência
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Podium top 3 */}
+      {sorted.length >= 3 && (
+        <GlobalPodium entries={sorted} currentUserId={currentUserId} />
+      )}
+
+      {/* Filter tabs */}
+      <div className="ranking-filter-bar">
+        <span className="ranking-filter-label">Ordenar por:</span>
+        <div className="ranking-filter-tabs">
+          <button className="active">⏱ Horas totais</button>
+        </div>
+      </div>
+
+      {/* Full list */}
+      <div className="ranking-list-panel">
+        {loading ? (
+          <div className="ranking-loading">
+            <div className="ranking-loading-spinner" />
+            <span>Carregando ranking global...</span>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="ranking-empty">
+            <span className="ranking-empty-icon">🏆</span>
+            <strong>Nenhum dado ainda</strong>
+            <p>Seja o primeiro do ranking! Registre uma sessão de estudos.</p>
+          </div>
+        ) : (
+          <div className="ranking-list">
+            {sorted.map((entry, index) => {
+              const isMe = entry.uid === currentUserId;
+              const isTop3 = index < 3;
+              const barWidth = maxHours > 0 ? Math.max(2, (entry.totalHours / maxHours) * 100) : 0;
+              return (
+                <div
+                  key={entry.uid}
+                  className={`ranking-row${isMe ? ' ranking-row-me' : ''}${isTop3 ? ' ranking-row-top' : ''}`}
+                >
+                  <span className="ranking-row-position">
+                    {isTop3 ? medals[index] : `#${index + 1}`}
+                  </span>
+                  <div className="ranking-row-avatar">
+                    {entry.username.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="ranking-row-info">
+                    <span className="ranking-row-name">
+                      {entry.username}
+                      {isMe && <span className="ranking-row-you-badge">você</span>}
+                    </span>
+                    <div className="ranking-row-bar-wrap">
+                      <div className="ranking-row-bar" style={{ width: `${barWidth}%` }} />
+                    </div>
+                  </div>
+                  <div className="ranking-row-stats">
+                    <span className="ranking-row-hours">{formatStudyHoursShort(entry.totalHours)}</span>
+                    <span className="ranking-row-meta">
+                      {`🔥 ${entry.currentStreak}d`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className="ranking-note">O ranking é atualizado em tempo real com base nas horas registradas pelo cronômetro.</p>
+    </div>
+  );
+}
+
 // ─── HUB INICIAL ─────────────────────────────────────────────────────────────
-function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut }) {
+function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut, sessionUser }) {
   const [activeHubView, setActiveHubView] = useState('concursos');
   const [summaryNow, setSummaryNow] = useState(INITIAL_NOW);
   useEffect(() => {
@@ -921,6 +1130,10 @@ function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut }
         <nav className="hub-view-tabs" aria-label="Seções principais">
           <button className={activeHubView === 'concursos' ? 'active' : ''} onClick={() => setActiveHubView('concursos')}>Concursos</button>
           <button className={activeHubView === 'cerebro' ? 'active' : ''} onClick={() => setActiveHubView('cerebro')}>Cérebro de aprendizagem</button>
+          <button
+            className={`hub-tab-ranking${activeHubView === 'ranking' ? ' active' : ''}`}
+            onClick={() => setActiveHubView('ranking')}
+          >🏆 Ranking Global</button>
         </nav>
         <div className="hub-account-tools">
           <span className={`hub-cloud-status hub-cloud-${cloudStatus}`}><i />{cloudStatus === 'synced' ? 'Sincronizado' : cloudStatus === 'saving' ? 'Salvando' : cloudStatus === 'offline' ? 'Offline' : cloudStatus === 'error' ? 'Falha ao sincronizar' : 'Conectando'}</span>
@@ -930,9 +1143,12 @@ function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut }
       </header>
 
       <div className="hub-content">
-        {activeHubView === 'cerebro' ? (
+        {activeHubView === 'ranking' ? (
+          <GlobalRanking currentUserId={sessionUser?.uid} />
+        ) : activeHubView === 'cerebro' ? (
           <CerebroAprendizagem summary={learningSummary} onOpenContest={onSelect} />
         ) : <>
+        <Top3RankingSummary currentUserId={sessionUser?.uid} onOpenRanking={() => setActiveHubView('ranking')} />
         <section className="hub-study-overview">
           <div className="hub-study-intro">
             <h1>Seu acompanhamento de estudos</h1>
