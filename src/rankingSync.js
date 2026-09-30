@@ -9,16 +9,16 @@ const RANKING_LIMIT = 100;
  * Only timer-recorded hours count (cheat-proof — cannot be manually edited).
  * @param {string} uid - Firebase user UID
  * @param {string} username - Display username
- * @param {number} timedHours - Hours recorded ONLY by the chronometer
+ * @param {number} totalHours - Hours recorded ONLY by the chronometer
  * @param {number} currentStreak - Current study streak in days
  * @param {number} studyDays - Total study days
  */
-export async function publishRankingEntry(uid, username, timedHours, currentStreak, studyDays) {
+export async function publishRankingEntry(uid, username, totalHours, currentStreak, studyDays) {
   if (!uid || !username) return;
   const entryRef = ref(database, `${RANKING_PATH}/${uid}`);
   await set(entryRef, {
     username,
-    timedHours,
+    totalHours,
     currentStreak,
     studyDays,
     updatedAt: serverTimestamp(),
@@ -40,7 +40,7 @@ export function subscribeGlobalRanking(onEntries) {
         .map(([uid, entry]) => ({ 
           uid, 
           username: entry.username,
-          totalHours: entry.timedHours || 0,
+          totalHours: entry.totalHours || entry.timedHours || 0,
           currentStreak: entry.currentStreak || 0,
           studyDays: entry.studyDays || 0
         }))
