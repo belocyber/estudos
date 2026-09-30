@@ -953,17 +953,53 @@ function Top3RankingSummary({ currentUserId, onOpenRanking }) {
   }, []);
   const top3 = entries.slice(0, 3);
   if (top3.length === 0) return null;
+  
+  const medals = ['🥇', '🥈', '🥉'];
+  
   return (
-    <section className="hub-study-overview" style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #333', marginBottom: '1.5rem', borderRadius: '0', background: 'transparent' }}>
-      <div className="hub-study-intro" style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <section className="hub-study-overview" style={{ paddingBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '2rem', background: 'transparent' }}>
+      <div className="hub-study-intro" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '1.1rem', color: '#fff', margin: 0 }}>Top 3 Global</h2>
-          <p style={{ margin: 0, marginTop: '2px', fontSize: '0.85rem' }}>Os maiores destaques da plataforma.</p>
+          <h2 style={{ fontSize: '1.1rem', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🏆</span> Top 3 Global
+          </h2>
         </div>
-        <button className="hub-signout" onClick={onOpenRanking} style={{ margin: 0, fontSize: '0.8rem', padding: '4px 10px' }}>Ver ranking completo</button>
+        <button className="hub-signout" onClick={onOpenRanking} style={{ margin: 0, fontSize: '0.8rem', padding: '6px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          Ver ranking completo
+        </button>
       </div>
-      <div style={{ transform: 'scale(0.75)', transformOrigin: 'top center', marginBottom: '-50px', marginTop: '-10px' }}>
-        <GlobalPodium entries={top3} currentUserId={currentUserId} />
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+        {top3.map((entry, index) => {
+          const isMe = entry.uid === currentUserId;
+          return (
+            <div key={entry.uid} style={{ 
+              display: 'flex', alignItems: 'center', gap: '12px', 
+              background: isMe ? 'rgba(245, 197, 24, 0.1)' : 'rgba(255,255,255,0.03)', 
+              border: `1px solid ${isMe ? 'rgba(245, 197, 24, 0.3)' : 'rgba(255,255,255,0.05)'}`,
+              padding: '12px 16px', borderRadius: '12px',
+              transition: 'transform 0.2s'
+            }}>
+              <div style={{ fontSize: '1.2rem' }}>{medals[index]}</div>
+              <div style={{ 
+                width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                background: isMe ? '#f5c518' : 'rgba(255,255,255,0.1)', color: isMe ? '#000' : '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                fontWeight: 'bold', fontSize: '0.9rem' 
+              }}>
+                {entry.username.slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: '600', color: isMe ? '#f5c518' : '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {entry.username} {isMe && '(você)'}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#888' }}>
+                  {formatStudyHoursShort(entry.totalHours)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
