@@ -2393,6 +2393,16 @@ body {
   padding-bottom: 48px;
 }
 
+.ranking-giveaway-banner {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: -8px 0 28px;
+  border: 1px solid rgba(245, 197, 24, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
 .ranking-hero {
   position: relative;
@@ -2877,4 +2887,3 @@ body {
   .ranking-filter-bar { flex-direction: column; align-items: flex-start; }
   .hub-tab-ranking { font-size: 0.65rem !important; }
 }
-

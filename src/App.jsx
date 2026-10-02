@@ -1055,6 +1055,13 @@ function GlobalRanking({ currentUserId }) {
         </div>
       </div>
 
+      <img
+        className="ranking-giveaway-banner"
+        src="/banner-sorteio-ranking.png"
+        alt="Sorteio especial: iPhone 17 Pro Max para o primeiro lugar do ranking. Estude mais e concorra."
+        loading="lazy"
+      />
+
       {/* Podium top 3 */}
       {sorted.length >= 3 && (
         <GlobalPodium entries={sorted} currentUserId={currentUserId} />
