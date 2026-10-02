@@ -1020,41 +1020,12 @@ function GlobalRanking({ currentUserId }) {
 
   const sorted = [...entries].sort((a, b) => b.totalHours - a.totalHours || b.currentStreak - a.currentStreak);
 
-  const myRank = sorted.findIndex(e => e.uid === currentUserId);
-  const myEntry = sorted[myRank];
   const maxHours = sorted[0]?.totalHours || 1;
 
   const medals = ['🥇', '🥈', '🥉'];
 
   return (
     <div className="ranking-wrapper">
-      {/* Hero banner */}
-      <div className="ranking-hero">
-        <div className="ranking-hero-bg" aria-hidden="true">
-          <div className="ranking-hero-glow" />
-        </div>
-        <div className="ranking-hero-content">
-          <span className="ranking-eyebrow">COMPETIÇÃO GLOBAL</span>
-          <h1 className="ranking-title">Ranking de Estudos</h1>
-          <p className="ranking-subtitle">Compare seu desempenho com outros candidatos e mantenha a motivação em alta.</p>
-
-          {myEntry && (
-            <div className="ranking-my-position">
-              <div className="ranking-my-avatar" aria-hidden="true">
-                {myEntry.username.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="ranking-my-info">
-                <span className="ranking-my-label">Sua posição atual</span>
-                <strong className="ranking-my-rank">#{myRank + 1} — {myEntry.username}</strong>
-                <span className="ranking-my-stats">
-                  {formatStudyHoursShort(myEntry.totalHours)} · {myEntry.currentStreak} dias de sequência
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       <img
         className="ranking-giveaway-banner"
         src="/banner-sorteio-ranking.png"
