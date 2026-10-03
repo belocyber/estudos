@@ -422,47 +422,72 @@ function AccessScreen({ onRecoveryPending }) {
 
   return (
     <main className="secure-access-screen">
+      <div className="secure-access-backdrop" aria-hidden="true" />
       <div className="secure-access-grid" />
-      <section className="secure-access-panel">
-        <div className="secure-access-mark" aria-hidden="true"><span>CT</span></div>
-        <span className="secure-access-classification">AMBIENTE PESSOAL · SINCRONIZAÇÃO ATIVA</span>
-        <h1>Central Tática</h1>
-        <p className="secure-access-subtitle">Acesse seu acompanhamento de estudos</p>
+      <div className="secure-access-layout">
+        <section className="secure-access-briefing">
+          <div className="secure-access-brand">
+            <div className="secure-access-mark" aria-hidden="true"><span>CT</span></div>
+            <div><strong>CENTRAL TÁTICA</strong><span>PLATAFORMA PESSOAL DE ESTUDOS</span></div>
+          </div>
+          <span className="secure-access-classification">AMBIENTE DIGITAL · ACESSO INDIVIDUAL</span>
+          <h1>Preparação estratégica.<br /><span>Progresso sob controle.</span></h1>
+          <p className="secure-access-briefing-copy">Organize sua rotina, acompanhe sua evolução e mantenha o foco em cada etapa da missão.</p>
+          <div className="secure-access-readiness">
+            <div><span className="secure-readiness-indicator" /><span>ACESSO PESSOAL</span><strong>Autenticação ativa</strong></div>
+            <div><span className="secure-readiness-indicator" /><span>DADOS DE ESTUDO</span><strong>Sincronização protegida</strong></div>
+          </div>
+          <div className="secure-access-coordinate" aria-hidden="true">
+            <span>CT / SISTEMA DE ACOMPANHAMENTO</span><span>DISCIPLINA · CONSTÂNCIA · PRONTIDÃO</span>
+          </div>
+        </section>
 
-        <form className="secure-access-form" onSubmit={submit}>
-          <label htmlFor="account-username">Username</label>
-          <input
-            id="account-username"
-            autoComplete="username"
-            maxLength={24}
-            value={username}
-            onChange={event => setUsername(event.target.value)}
-            placeholder="seu-username"
-            required
-          />
-          {recovering && <>
-            <label htmlFor="account-recovery-code">Código de recuperação</label>
+        <section className="secure-access-panel">
+          <div className="secure-access-panel-heading">
+            <span className="secure-access-panel-code">01 / IDENTIFICAÇÃO</span>
+            <span className="secure-access-lock" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 10V7a5 5 0 0 1 10 0v3m-11 0h12a2 2 0 0 1 2 2v8H4v-8a2 2 0 0 1 2-2Z" /><path d="M12 14v2" /></svg>
+            </span>
+          </div>
+          <span className="secure-access-classification">CREDENCIAL DO PERFIL</span>
+          <h2>{recovering ? 'Recuperar acesso' : 'Acessar ambiente'}</h2>
+          <p className="secure-access-subtitle">{recovering ? 'Informe suas credenciais para restaurar seu perfil.' : 'Entre para continuar sua preparação.'}</p>
+
+          <form className="secure-access-form" onSubmit={submit}>
+            <label htmlFor="account-username">Identificação do perfil</label>
             <input
-              id="account-recovery-code"
-              autoComplete="one-time-code"
-              value={recoveryCode}
-              onChange={event => setRecoveryCode(event.target.value)}
-              placeholder="XXXX-XXXX-XXXX-XXXX..."
+              id="account-username"
+              autoComplete="username"
+              maxLength={24}
+              value={username}
+              onChange={event => setUsername(event.target.value)}
+              placeholder="Seu username"
               required
             />
-          </>}
-          {message && <p className="secure-access-message" role="alert">{message}</p>}
-          <button className="secure-access-submit" type="submit" disabled={busy}>
-            {busy ? 'Conectando...' : recovering ? 'Recuperar e entrar' : 'Entrar'}
-            <span aria-hidden="true">↗</span>
-          </button>
-        </form>
+            {recovering && <>
+              <label htmlFor="account-recovery-code">Código de recuperação</label>
+              <input
+                id="account-recovery-code"
+                autoComplete="one-time-code"
+                value={recoveryCode}
+                onChange={event => setRecoveryCode(event.target.value)}
+                placeholder="XXXX-XXXX-XXXX-XXXX..."
+                required
+              />
+            </>}
+            {message && <p className="secure-access-message" role="alert">{message}</p>}
+            <button className="secure-access-submit" type="submit" disabled={busy}>
+              {busy ? 'Verificando credenciais...' : recovering ? 'Validar e recuperar acesso' : 'Autenticar perfil'}
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
 
-        <button className="secure-access-switch" onClick={() => { setRecovering(value => !value); setMessage(''); }}>
-          {recovering ? 'Primeiro acesso? Criar username' : 'Já tenho um código de recuperação'}
-        </button>
-        <p className="secure-access-footnote">Seus dados ficam vinculados ao seu perfil e sincronizados entre dispositivos.</p>
-      </section>
+          <button className="secure-access-switch" onClick={() => { setRecovering(value => !value); setMessage(''); }}>
+            {recovering ? 'Primeiro acesso? Criar perfil' : 'Já tenho um código de recuperação'}
+          </button>
+          <p className="secure-access-footnote"><span className="secure-footnote-dot" />Acesso pessoal. Seus dados são vinculados ao perfil e sincronizados entre dispositivos.</p>
+        </section>
+      </div>
     </main>
   );
 }
@@ -1164,7 +1189,7 @@ function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut, 
         ) : activeHubView === 'cerebro' ? (
           <CerebroAprendizagem summary={learningSummary} onOpenContest={onSelect} />
         ) : activeHubView === 'idiomas' ? (
-          <IdiomaTreino />
+          <IdiomaTreino username={username} />
         ) : <>
         <Top3RankingSummary currentUserId={sessionUser?.uid} onOpenRanking={() => setActiveHubView('ranking')} />
         <section className="hub-study-overview">
