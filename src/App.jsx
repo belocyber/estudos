@@ -16,6 +16,7 @@ import { createUsernameAccount, generateRecoveryCode, leaveUsernameAccount, reco
 import { auth, authReady } from './firebaseClient.js';
 import { subscribeAccountSync } from './firebaseSync.js';
 import { publishRankingEntry, subscribeGlobalRanking } from './rankingSync.js';
+import IdiomaTreino from './IdiomaTreino.jsx';
 import './index.css';
 
 const INITIAL_NOW = Date.now();
@@ -1144,6 +1145,7 @@ function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut, 
         <nav className="hub-view-tabs" aria-label="Seções principais">
           <button className={activeHubView === 'concursos' ? 'active' : ''} onClick={() => setActiveHubView('concursos')}>Concursos</button>
           <button className={activeHubView === 'cerebro' ? 'active' : ''} onClick={() => setActiveHubView('cerebro')}>Cérebro de aprendizagem</button>
+          <button className={activeHubView === 'idiomas' ? 'active' : ''} onClick={() => setActiveHubView('idiomas')}>Idiomas</button>
           <button
             className={`hub-tab-ranking${activeHubView === 'ranking' ? ' active' : ''}`}
             onClick={() => setActiveHubView('ranking')}
@@ -1161,6 +1163,8 @@ function HubInicial({ onSelect, onStartStudy, username, cloudStatus, onSignOut, 
           <GlobalRanking currentUserId={sessionUser?.uid} />
         ) : activeHubView === 'cerebro' ? (
           <CerebroAprendizagem summary={learningSummary} onOpenContest={onSelect} />
+        ) : activeHubView === 'idiomas' ? (
+          <IdiomaTreino />
         ) : <>
         <Top3RankingSummary currentUserId={sessionUser?.uid} onOpenRanking={() => setActiveHubView('ranking')} />
         <section className="hub-study-overview">
